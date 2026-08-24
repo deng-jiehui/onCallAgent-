@@ -8,6 +8,13 @@
 
 **Tech Stack:** Go 1.24, GoFrame v2 HTTP routing, `github.com/golang-jwt/jwt/v5`, `golang.org/x/crypto/bcrypt`, existing OpenTelemetry request context.
 
+## Implementation Status
+
+- Phase 1 local JWT authentication: implemented and pushed in commit `db56cf1`.
+- Phase 1 project README and safe configuration template: implemented and pushed in commit `9feb186`.
+- Phase 2A session identity and in-process coordination: implemented in the follow-up conversation-isolation commit; the store interface remains the seam for PostgreSQL/Redis.
+- Phase 2B shared PostgreSQL/Redis persistence, tenant-filtered retrieval, and cluster coordination: pending.
+
 ## Global Constraints
 
 - JWT signing uses HS256 only in the local module; the parser must reject other algorithms.
@@ -204,4 +211,3 @@ These phases are not silently dropped when JWT is implemented:
 - Replace local users with PostgreSQL or enterprise OIDC/JWT verification.
 - Rotate local signing secrets and disable local-password login in production.
 - Add audit logs, key rotation, refresh/revocation strategy, dashboards, load tests, and multi-instance deployment checks.
-

@@ -4,7 +4,6 @@ import (
 	"SuperBizAgent/api/chat/v1"
 	"SuperBizAgent/internal/ai/agent/chat_pipeline"
 	"SuperBizAgent/internal/observability"
-	"SuperBizAgent/utility/mem"
 	"context"
 	"errors"
 	"io"
@@ -19,52 +18,60 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 	defer func() { finish(err) }()
 	id := req.Id
 	msg := req.Question
+	key, err := sessionKey(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 
-	ctx = context.WithValue(ctx, "client_id", req.Id)
 	client, err := c.service.Create(ctx, g.RequestFromCtx(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	userMessage := &chat_pipeline.UserMessage{
-		ID:      id,
-		Query:   msg,
-		History: mem.GetSimpleMemory(id).GetMessages(),
-	}
+	err = c.coordinator.Run(ctx, key, func(runCtx context.Context) error {
+		history, _, loadErr := c.conversations.Load(runCtx, key)
+		if loadErr != nil {
+			return loadErr
+		}
+		userMessage := &chat_pipeline.UserMessage{
+			ID:      id,
+			Query:   msg,
+			History: history,
+		}
+		runner, buildErr := chat_pipeline.BuildChatAgent(runCtx)
+		if buildErr != nil {
+			return buildErr
+		}
+		sr, streamErr := runner.Stream(runCtx, userMessage)
+		if streamErr != nil {
+			return streamErr
+		}
+		defer sr.Close()
 
-	runner, err := chat_pipeline.BuildChatAgent(ctx)
+		var fullResponse strings.Builder
+		for {
+			chunk, recvErr := sr.Recv()
+			if errors.Is(recvErr, io.EOF) {
+				completeResponse := fullResponse.String()
+				if completeResponse == "" {
+					return errors.New("chat agent returned empty stream")
+				}
+				if appendErr := c.conversations.Append(runCtx, key, schema.UserMessage(msg), schema.AssistantMessage(completeResponse, nil)); appendErr != nil {
+					return appendErr
+				}
+				client.SendToClient("done", "Stream completed")
+				return nil
+			}
+			if recvErr != nil {
+				return recvErr
+			}
+			fullResponse.WriteString(chunk.Content)
+			client.SendToClient("message", chunk.Content)
+		}
+	})
 	if err != nil {
 		client.SendToClient("error", err.Error())
 		return nil, err
 	}
-	sr, err := runner.Stream(ctx, userMessage)
-	if err != nil {
-		client.SendToClient("error", err.Error())
-		return nil, err
-	}
-	defer sr.Close()
-
-	var fullResponse strings.Builder
-
-	defer func() {
-		completeResponse := fullResponse.String()
-		if completeResponse != "" {
-			mem.GetSimpleMemory(id).SetMessages(schema.UserMessage(msg))
-			mem.GetSimpleMemory(id).SetMessages(schema.SystemMessage(completeResponse))
-		}
-	}()
-
-	for {
-		chunk, err := sr.Recv()
-		if errors.Is(err, io.EOF) {
-			client.SendToClient("done", "Stream completed")
-			return &v1.ChatStreamRes{}, nil
-		}
-		if err != nil {
-			client.SendToClient("error", err.Error())
-			return &v1.ChatStreamRes{}, nil
-		}
-		fullResponse.WriteString(chunk.Content)
-		client.SendToClient("message", chunk.Content)
-	}
+	return &v1.ChatStreamRes{}, nil
 }

@@ -6,15 +6,20 @@ package chat
 
 import (
 	"SuperBizAgent/api/chat"
+	"SuperBizAgent/internal/conversation"
 	"SuperBizAgent/internal/logic/sse"
 )
 
 type ControllerV1 struct {
-	service *sse.Service
+	service       *sse.Service
+	conversations *conversation.MemoryStore
+	coordinator   *conversation.Coordinator
 }
 
 func NewV1() chat.IChatV1 {
 	return &ControllerV1{
-		service: sse.New(),
+		service:       sse.New(),
+		conversations: conversation.NewMemoryStore(6),
+		coordinator:   conversation.NewCoordinator(),
 	}
 }
