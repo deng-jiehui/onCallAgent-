@@ -12,8 +12,9 @@
 
 - Phase 1 local JWT authentication: implemented and pushed in commit `db56cf1`.
 - Phase 1 project README and safe configuration template: implemented and pushed in commit `9feb186`.
-- Phase 2A session identity and in-process coordination: implemented in the follow-up conversation-isolation commit; the store interface remains the seam for PostgreSQL/Redis.
+- Phase 2A session identity and in-process coordination: implemented in commit `9a14cec`; the store interface remains the seam for PostgreSQL/Redis.
 - Phase 2B shared PostgreSQL/Redis persistence, tenant-filtered retrieval, and cluster coordination: pending.
+- Phase 3 Agent Runtime, policy routing, and safe tools: pending.
 
 ## Global Constraints
 
@@ -186,28 +187,67 @@ These phases are not silently dropped when JWT is implemented:
 
 ### Phase 2: Shared Conversation and Tenant Isolation
 
-- Add `SessionKey{TenantID, UserID, ConversationID}`.
-- Add `ConversationStore` backed by PostgreSQL, with Redis as a hot cache if needed.
-- Use versioned atomic append for user/assistant message pairs.
-- Add same-conversation coordination and idempotency keys.
-- Add tenant filter/partition enforcement to Milvus and tenant-aware file storage.
+- [x] Add `SessionKey{TenantID, UserID, ConversationID}` and bind it to the authenticated JWT principal.
+- [x] Add an in-process `ConversationStore` and same-session coordinator as a testable adapter.
+- [ ] Add PostgreSQL `conversations` and `conversation_messages` tables with `(tenant_id, user_id, conversation_id)` ownership.
+- [ ] Implement `ConversationStore` with transactional versioned append; append the user/assistant pair atomically.
+- [ ] Add Redis hot-cache reads with PostgreSQL as the source of truth; invalidate or update cache only after a successful database commit.
+- [ ] Add idempotency keys for retries and reject duplicate turn commits.
+- [ ] Add tenant filter/partition enforcement to Milvus and tenant-aware file storage.
+- [ ] Add tests proving identical document IDs, conversation IDs, and user IDs across tenants never cross boundaries.
+
+### Phase 2B: Retrieval Quality and Tenant Safety
+
+- [ ] Change Retriever options to read `tenant_id` from typed request context and require a tenant filter for production collections.
+- [ ] Choose one isolation strategy per deployment: Milvus partition by tenant or a mandatory scalar filter; reject queries that omit the tenant scope.
+- [ ] Raise the default retrieval `topK` from `1` to a configured value such as `3` or `5`, and add a configurable distance threshold.
+- [ ] Preserve retrieval rank and score in metadata and add tests for empty/low-quality recall.
+- [ ] Add an intent-aware retrieval decision so greetings, time queries, and pure follow-ups can skip Milvus when no knowledge lookup is needed.
+- [ ] Add evaluation cases for cross-tenant retrieval, no-recall behavior, and multi-document answers.
 
 ### Phase 3: Runtime Reuse and Tool Policy
 
-- Initialize ChatModel, Embedding, Milvus, Retriever, MCP clients, and compiled Agent Graph at startup.
-- Inject a shared `Runtime` into controllers.
-- Ensure tools receive authenticated tenant/user context and cannot accept arbitrary DSNs or unrestricted SQL.
-- Add model routing policy and per-tenant model configuration.
+- [ ] Add a startup-owned `Runtime` that initializes ChatModel, Embedding, Milvus, Retriever, MCP clients, and the compiled Agent Graph once.
+- [ ] Inject `Runtime` into controllers and remove `BuildChatAgent` from the request path.
+- [ ] Add startup health checks and graceful shutdown for Milvus, MCP, and model clients.
+- [ ] Check SDK concurrency safety with parallel integration tests; keep request-specific state in local variables/context only.
+- [ ] Add a `ToolRegistry` that resolves tools from `Principal`, tenant policy, and request intent; never expose every tool to every user.
+- [ ] Replace `mysql_crud` model-supplied DSN with named, server-side data sources and tenant-scoped credentials.
+- [ ] Make database access read-only by default, validate SQL operations, remove terminal confirmation, replace `log.Fatal` with returned errors, and apply query/connection timeouts.
+- [ ] Make MCP clients use request context, support cancellation, and apply per-tool timeouts; do not initialize MCP clients with `context.Background()` in request paths.
+- [ ] Add an `IntentRouter` with explicit routes for direct chat, RAG, logs/MCP, Prometheus, controlled database queries, and plan/execute tasks.
+- [ ] Add a `ModelRouter` for quick/deep/fallback models with per-tenant policy, token budget, timeout, and cost metadata.
+- [ ] Treat Graph construction errors as fatal errors; stop ignoring `AddLambdaNode`, `AddRetrieverNode`, and `AddEdge` return values.
+- [ ] Add tests for tool allow/deny decisions, model route selection, Graph construction failures, and runtime reuse under parallel requests.
 
 ### Phase 4: High-Concurrency and Streaming Governance
 
-- Add instance and cluster-level concurrency limits.
-- Add Redis-backed tenant quotas and conversation locks/queues.
-- Refactor SSE to a single writer with a bounded queue and cancellation propagation.
-- Fix the generic response middleware so it cannot append JSON to an SSE response.
+- [ ] Add instance-level Agent semaphores and cluster-level Redis tenant quotas.
+- [ ] Add Redis-backed conversation locks/queues with lease, renewal, bounded wait, and cancellation behavior.
+- [ ] Refactor SSE to a single writer with a bounded queue; stop Agent/model/tool work when the client disconnects.
+- [ ] Ensure incomplete streams are not committed as assistant history; commit before sending the terminal `done` event.
+- [ ] Fix the generic response middleware so it cannot append JSON to an SSE response.
+- [ ] Add load tests for 100+ independent conversations, slow clients, downstream timeouts, and retry/idempotency behavior.
+- [ ] Run `go test -race ./...` in CI or a development image that provides a C compiler; the current Windows host lacks `gcc`.
 
 ### Phase 5: Production Identity and Operations
 
-- Replace local users with PostgreSQL or enterprise OIDC/JWT verification.
-- Rotate local signing secrets and disable local-password login in production.
-- Add audit logs, key rotation, refresh/revocation strategy, dashboards, load tests, and multi-instance deployment checks.
+- [ ] Replace local users with PostgreSQL or enterprise OIDC/JWT verification.
+- [ ] Rotate local signing secrets and disable local-password login in production.
+- [ ] Add audit logs for login, conversation access, tool authorization, and administrative actions.
+- [ ] Add key rotation, token revocation, refresh-token strategy, and account disable behavior.
+- [ ] Add dashboards for request latency, model/tool errors, retrieval quality, queue wait, rate-limit rejection, and token/cost usage.
+- [ ] Add multi-instance deployment checks proving any instance can serve any authenticated conversation.
+
+## Agent Acceptance Gates
+
+The Agent redesign is complete only when all of the following are demonstrated:
+
+- A user cannot retrieve another tenant's documents even when the query, document ID, and conversation ID are identical.
+- A request that lacks an allowed tool receives a policy denial before the model can invoke that tool.
+- A database tool cannot receive an arbitrary DSN, cannot execute write operations without an explicit policy, and cannot terminate the server on query failure.
+- A client disconnect cancels the active model, retriever, and MCP calls within the configured timeout.
+- Two independent conversations can execute concurrently while two turns in the same conversation remain ordered.
+- The Agent Graph and its model/retriever/tool dependencies are initialized once per runtime, not once per request.
+- A low-quality or empty retrieval result is visible to evaluation and does not become a fabricated document citation.
+- All Graph construction errors are returned with the failing node or edge name.
