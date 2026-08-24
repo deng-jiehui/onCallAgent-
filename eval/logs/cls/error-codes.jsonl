@@ -1,0 +1,3 @@
+{"service":"resource","level":"ERROR","event":"error_code","code":"12000000001","message":"invalid parameter type"}
+{"service":"resource","level":"ERROR","event":"error_code","code":"12000000002","message":"database update failed"}
+{"service":"resource","level":"INFO","event":"health_check","message":"test log uploaded by SuperBizAgent"}

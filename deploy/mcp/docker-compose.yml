@@ -1,0 +1,18 @@
+services:
+  cls-mcp:
+    image: superbizagent-cls-mcp:1.2.0
+    container_name: superbizagent-cls-mcp
+    restart: unless-stopped
+    environment:
+      TRANSPORT: sse
+      PORT: "3000"
+      TENCENTCLOUD_SECRET_ID: ${TENCENTCLOUD_SECRET_ID:?set TENCENTCLOUD_SECRET_ID}
+      TENCENTCLOUD_SECRET_KEY: ${TENCENTCLOUD_SECRET_KEY:?set TENCENTCLOUD_SECRET_KEY}
+      TZ: Asia/Shanghai
+    ports:
+      - "3100:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

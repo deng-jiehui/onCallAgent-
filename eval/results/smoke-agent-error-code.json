@@ -1,0 +1,85 @@
+{
+  "generated_at": "2026-08-19T17:17:01.5346307Z",
+  "config": {
+    "top_k": 5,
+    "tags": [
+      "error-code"
+    ],
+    "run_retrieval": false,
+    "run_agent": true,
+    "run_judge": false
+  },
+  "cases": [
+    {
+      "id": "error-code-001",
+      "question": "错误码 12000000001 的常见原因是什么？",
+      "metrics": {},
+      "errors": [
+        "agent: [NodeRunError] failed to create chat completion: error, status code: 404, status: 404 Not Found, message: The model or endpoint deepseek-v3-2-251201 does not exist or you do not have access to it. Request id: 0217871598221117d051a5e3144c4e0e28e20e35f01da1b281b8c\n------------------------\nnode path: [ReactAgent, chat]"
+      ]
+    },
+    {
+      "id": "error-code-002",
+      "question": "错误码 12000000002 的常见原因是什么？",
+      "metrics": {},
+      "errors": [
+        "agent: [NodeRunError] failed to create chat completion: error, status code: 404, status: 404 Not Found, message: The model or endpoint deepseek-v3-2-251201 does not exist or you do not have access to it. Request id: 0217871598224077d051a5e3144c4e0e28e20e35f01da1be683e4\n------------------------\nnode path: [ReactAgent, chat]"
+      ]
+    },
+    {
+      "id": "error-code-003",
+      "question": "错误码 12000000003 的常见原因是什么？",
+      "metrics": {},
+      "errors": [
+        "agent: [NodeRunError] failed to create chat completion: error, status code: 404, status: 404 Not Found, message: The model or endpoint deepseek-v3-2-251201 does not exist or you do not have access to it. Request id: 0217871598226067d051a5e3144c4e0e28e20e35f01da1bd48837\n------------------------\nnode path: [ReactAgent, chat]"
+      ]
+    },
+    {
+      "id": "error-code-004",
+      "question": "错误码 12000000004 的常见原因是什么？",
+      "metrics": {},
+      "errors": [
+        "agent: [NodeRunError] failed to create chat completion: error, status code: 404, status: 404 Not Found, message: The model or endpoint deepseek-v3-2-251201 does not exist or you do not have access to it. Request id: 0217871598228037d051a5e3144c4e0e28e20e35f01da1b3231b4\n------------------------\nnode path: [ReactAgent, chat]"
+      ]
+    }
+  ],
+  "aggregates": {
+    "exact_match": {
+      "mean": 0,
+      "count": 0
+    },
+    "judge_completeness": {
+      "mean": 0,
+      "count": 0
+    },
+    "judge_faithfulness": {
+      "mean": 0,
+      "count": 0
+    },
+    "judge_relevance": {
+      "mean": 0,
+      "count": 0
+    },
+    "mrr": {
+      "mean": 0,
+      "count": 0
+    },
+    "ndcg_at_k": {
+      "mean": 0,
+      "count": 0
+    },
+    "recall_at_k": {
+      "mean": 0,
+      "count": 0
+    },
+    "token_f1": {
+      "mean": 0,
+      "count": 0
+    },
+    "tool_set_accuracy": {
+      "mean": 0,
+      "count": 0
+    }
+  },
+  "failed_cases": 4
+}

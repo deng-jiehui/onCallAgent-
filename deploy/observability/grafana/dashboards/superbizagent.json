@@ -1,0 +1,45 @@
+{
+  "title": "SuperBizAgent Overview",
+  "uid": "superbizagent-overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Request rate",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [{"expr": "sum(rate(superbizagent_requests_total[5m]))", "legendFormat": "requests/s"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request latency p95",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(superbizagent_request_duration_seconds_bucket[5m])))", "legendFormat": "p95"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Component latency",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le, component) (rate(superbizagent_component_duration_seconds_bucket[5m])))", "legendFormat": "{{component}}"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "LLM tokens",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [{"expr": "sum by (kind) (rate(superbizagent_llm_tokens_total[5m]))", "legendFormat": "{{kind}}"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Retrieval distance p95",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le, collection) (rate(superbizagent_retrieval_distance_bucket[5m])))", "legendFormat": "{{collection}}"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Tool calls",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "targets": [{"expr": "sum by (tool, status) (rate(superbizagent_tool_calls_total[5m]))", "legendFormat": "{{tool}} {{status}}"}]
+    }
+  ]
+}

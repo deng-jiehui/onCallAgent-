@@ -1,0 +1,100 @@
+{
+  "generated_at": "2026-08-19T13:01:33.3131395Z",
+  "config": {
+    "top_k": 5,
+    "run_retrieval": false,
+    "run_agent": false,
+    "run_judge": false
+  },
+  "cases": [
+    {
+      "id": "alert-service-offline",
+      "question": "服务下线告警通常应该如何排查？",
+      "metrics": {}
+    },
+    {
+      "id": "alert-api-failure",
+      "question": "接口失败率过高应该如何排查？",
+      "metrics": {}
+    },
+    {
+      "id": "alert-reconciliation",
+      "question": "与下游对账出现差异时应该如何排查？",
+      "metrics": {}
+    },
+    {
+      "id": "alert-region-mismatch",
+      "question": "服务地域与资源地域不匹配时应该如何排查？",
+      "metrics": {}
+    },
+    {
+      "id": "error-code-001",
+      "question": "错误码 12000000001 的常见原因是什么？",
+      "metrics": {}
+    },
+    {
+      "id": "error-code-002",
+      "question": "错误码 12000000002 的常见原因是什么？",
+      "metrics": {}
+    },
+    {
+      "id": "error-code-003",
+      "question": "错误码 12000000003 的常见原因是什么？",
+      "metrics": {}
+    },
+    {
+      "id": "error-code-004",
+      "question": "错误码 12000000004 的常见原因是什么？",
+      "metrics": {}
+    },
+    {
+      "id": "alert-panic-keyword",
+      "question": "排查服务 panic 时日志查询的时间范围是什么？",
+      "metrics": {}
+    },
+    {
+      "id": "alert-region-keyword",
+      "question": "地域不匹配问题应该使用什么日志关键字？",
+      "metrics": {}
+    }
+  ],
+  "aggregates": {
+    "exact_match": {
+      "mean": 0,
+      "count": 0
+    },
+    "judge_completeness": {
+      "mean": 0,
+      "count": 0
+    },
+    "judge_faithfulness": {
+      "mean": 0,
+      "count": 0
+    },
+    "judge_relevance": {
+      "mean": 0,
+      "count": 0
+    },
+    "mrr": {
+      "mean": 0,
+      "count": 0
+    },
+    "ndcg_at_k": {
+      "mean": 0,
+      "count": 0
+    },
+    "recall_at_k": {
+      "mean": 0,
+      "count": 0
+    },
+    "token_f1": {
+      "mean": 0,
+      "count": 0
+    },
+    "tool_set_accuracy": {
+      "mean": 0,
+      "count": 0
+    }
+  },
+  "failed_cases": 0
+}

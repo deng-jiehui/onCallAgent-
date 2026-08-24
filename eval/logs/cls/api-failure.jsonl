@@ -1,0 +1,2 @@
+{"service":"order","level":"ERROR","event":"api_failure","message":"CreateOrder response status=500"}
+{"service":"order","level":"WARN","event":"downstream_timeout","message":"inventory dependency timeout"}

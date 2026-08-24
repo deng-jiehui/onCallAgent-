@@ -1,0 +1,390 @@
+{
+  "generated_at": "2026-08-19T17:17:01.5754754Z",
+  "config": {
+    "top_k": 5,
+    "run_retrieval": true,
+    "run_agent": false,
+    "run_judge": false
+  },
+  "cases": [
+    {
+      "id": "alert-service-offline",
+      "question": "服务下线告警通常应该如何排查？",
+      "retrieved": [
+        {
+          "id": "d2ca9503e96eee9364153da657db8408b9c5ab52c6f6fc6eed7ec63d8ca702ca",
+          "rank": 1,
+          "distance": 27245
+        },
+        {
+          "id": "e015ffe86febc678a40b2f8ec87d63b4f7bca99ddef3c5cf5ccf95bb69236fa4",
+          "rank": 2,
+          "distance": 27432
+        },
+        {
+          "id": "c50d4279421db19e341970315288365faa0e057756f6dc78fdbebe2cf993979b",
+          "rank": 3,
+          "distance": 27508
+        },
+        {
+          "id": "f70885e2d68238888099fa77c4867cc52a86cf8f850fdace67132bac8a2f6af6",
+          "rank": 4,
+          "distance": 27557
+        }
+      ],
+      "metrics": {
+        "recall_at_k": 0,
+        "mrr": 0,
+        "ndcg_at_k": 0
+      }
+    },
+    {
+      "id": "alert-api-failure",
+      "question": "接口失败率过高应该如何排查？",
+      "retrieved": [
+        {
+          "id": "6017feb8bdab6d54ceef17b1999cb763830c9209bdfbe4ac0a7199345ed4c8c6",
+          "rank": 1,
+          "distance": 27076
+        },
+        {
+          "id": "e015ffe86febc678a40b2f8ec87d63b4f7bca99ddef3c5cf5ccf95bb69236fa4",
+          "rank": 2,
+          "distance": 27435
+        },
+        {
+          "id": "c50d4279421db19e341970315288365faa0e057756f6dc78fdbebe2cf993979b",
+          "rank": 3,
+          "distance": 27483
+        },
+        {
+          "id": "d2ca9503e96eee9364153da657db8408b9c5ab52c6f6fc6eed7ec63d8ca702ca",
+          "rank": 4,
+          "distance": 27656
+        }
+      ],
+      "metrics": {
+        "recall_at_k": 1,
+        "mrr": 0.25,
+        "ndcg_at_k": 0.43067655807339306
+      }
+    },
+    {
+      "id": "alert-reconciliation",
+      "question": "与下游对账出现差异时应该如何排查？",
+      "retrieved": [
+        {
+          "id": "51c7eaaa4de6d8fb29231717042ca9c53bf4080241790cc2b610f767f4f60ce4",
+          "rank": 1,
+          "distance": 27087
+        },
+        {
+          "id": "c50d4279421db19e341970315288365faa0e057756f6dc78fdbebe2cf993979b",
+          "rank": 2,
+          "distance": 27560
+        },
+        {
+          "id": "f70885e2d68238888099fa77c4867cc52a86cf8f850fdace67132bac8a2f6af6",
+          "rank": 3,
+          "distance": 27685
+        },
+        {
+          "id": "d2ca9503e96eee9364153da657db8408b9c5ab52c6f6fc6eed7ec63d8ca702ca",
+          "rank": 4,
+          "distance": 27799
+        },
+        {
+          "id": "e015ffe86febc678a40b2f8ec87d63b4f7bca99ddef3c5cf5ccf95bb69236fa4",
+          "rank": 5,
+          "distance": 27870
+        }
+      ],
+      "metrics": {
+        "recall_at_k": 1,
+        "mrr": 1,
+        "ndcg_at_k": 1
+      }
+    },
+    {
+      "id": "alert-region-mismatch",
+      "question": "服务地域与资源地域不匹配时应该如何排查？",
+      "retrieved": [
+        {
+          "id": "f70885e2d68238888099fa77c4867cc52a86cf8f850fdace67132bac8a2f6af6",
+          "rank": 1,
+          "distance": 27031
+        },
+        {
+          "id": "c50d4279421db19e341970315288365faa0e057756f6dc78fdbebe2cf993979b",
+          "rank": 2,
+          "distance": 27590
+        },
+        {
+          "id": "d2ca9503e96eee9364153da657db8408b9c5ab52c6f6fc6eed7ec63d8ca702ca",
+          "rank": 3,
+          "distance": 27661
+        },
+        {
+          "id": "6017feb8bdab6d54ceef17b1999cb763830c9209bdfbe4ac0a7199345ed4c8c6",
+          "rank": 4,
+          "distance": 27683
+        },
+        {
+          "id": "e015ffe86febc678a40b2f8ec87d63b4f7bca99ddef3c5cf5ccf95bb69236fa4",
+          "rank": 5,
+          "distance": 27712
+        }
+      ],
+      "metrics": {
+        "recall_at_k": 1,
+        "mrr": 1,
+        "ndcg_at_k": 1
+      }
+    },
+    {
+      "id": "error-code-001",
+      "question": "错误码 12000000001 的常见原因是什么？",
+      "retrieved": [
+        {
+          "id": "c50d4279421db19e341970315288365faa0e057756f6dc78fdbebe2cf993979b",
+          "rank": 1,
+          "distance": 27614
+        },
+        {
+          "id": "51c7eaaa4de6d8fb29231717042ca9c53bf4080241790cc2b610f767f4f60ce4",
+          "rank": 2,
+          "distance": 27769
+        },
+        {
+          "id": "f70885e2d68238888099fa77c4867cc52a86cf8f850fdace67132bac8a2f6af6",
+          "rank": 3,
+          "distance": 27789
+        },
+        {
+          "id": "d2ca9503e96eee9364153da657db8408b9c5ab52c6f6fc6eed7ec63d8ca702ca",
+          "rank": 4,
+          "distance": 27793
+        },
+        {
+          "id": "e015ffe86febc678a40b2f8ec87d63b4f7bca99ddef3c5cf5ccf95bb69236fa4",
+          "rank": 5,
+          "distance": 27982
+        }
+      ],
+      "metrics": {
+        "recall_at_k": 1,
+        "mrr": 1,
+        "ndcg_at_k": 1
+      }
+    },
+    {
+      "id": "error-code-002",
+      "question": "错误码 12000000002 的常见原因是什么？",
+      "retrieved": [
+        {
+          "id": "c50d4279421db19e341970315288365faa0e057756f6dc78fdbebe2cf993979b",
+          "rank": 1,
+          "distance": 27578
+        },
+        {
+          "id": "e015ffe86febc678a40b2f8ec87d63b4f7bca99ddef3c5cf5ccf95bb69236fa4",
+          "rank": 2,
+          "distance": 27584
+        },
+        {
+          "id": "f70885e2d68238888099fa77c4867cc52a86cf8f850fdace67132bac8a2f6af6",
+          "rank": 3,
+          "distance": 27721
+        },
+        {
+          "id": "d2ca9503e96eee9364153da657db8408b9c5ab52c6f6fc6eed7ec63d8ca702ca",
+          "rank": 4,
+          "distance": 27753
+        }
+      ],
+      "metrics": {
+        "recall_at_k": 1,
+        "mrr": 1,
+        "ndcg_at_k": 1
+      }
+    },
+    {
+      "id": "error-code-003",
+      "question": "错误码 12000000003 的常见原因是什么？",
+      "retrieved": [
+        {
+          "id": "6017feb8bdab6d54ceef17b1999cb763830c9209bdfbe4ac0a7199345ed4c8c6",
+          "rank": 1,
+          "distance": 27431
+        },
+        {
+          "id": "c50d4279421db19e341970315288365faa0e057756f6dc78fdbebe2cf993979b",
+          "rank": 2,
+          "distance": 27498
+        },
+        {
+          "id": "d2ca9503e96eee9364153da657db8408b9c5ab52c6f6fc6eed7ec63d8ca702ca",
+          "rank": 3,
+          "distance": 27677
+        },
+        {
+          "id": "f70885e2d68238888099fa77c4867cc52a86cf8f850fdace67132bac8a2f6af6",
+          "rank": 4,
+          "distance": 27843
+        },
+        {
+          "id": "e015ffe86febc678a40b2f8ec87d63b4f7bca99ddef3c5cf5ccf95bb69236fa4",
+          "rank": 5,
+          "distance": 28002
+        }
+      ],
+      "metrics": {
+        "recall_at_k": 1,
+        "mrr": 0.5,
+        "ndcg_at_k": 0.6309297535714574
+      }
+    },
+    {
+      "id": "error-code-004",
+      "question": "错误码 12000000004 的常见原因是什么？",
+      "retrieved": [
+        {
+          "id": "51c7eaaa4de6d8fb29231717042ca9c53bf4080241790cc2b610f767f4f60ce4",
+          "rank": 1,
+          "distance": 27717
+        },
+        {
+          "id": "f70885e2d68238888099fa77c4867cc52a86cf8f850fdace67132bac8a2f6af6",
+          "rank": 2,
+          "distance": 27739
+        },
+        {
+          "id": "6017feb8bdab6d54ceef17b1999cb763830c9209bdfbe4ac0a7199345ed4c8c6",
+          "rank": 3,
+          "distance": 27791
+        },
+        {
+          "id": "c50d4279421db19e341970315288365faa0e057756f6dc78fdbebe2cf993979b",
+          "rank": 4,
+          "distance": 27796
+        },
+        {
+          "id": "e015ffe86febc678a40b2f8ec87d63b4f7bca99ddef3c5cf5ccf95bb69236fa4",
+          "rank": 5,
+          "distance": 27804
+        }
+      ],
+      "metrics": {
+        "recall_at_k": 1,
+        "mrr": 0.25,
+        "ndcg_at_k": 0.43067655807339306
+      }
+    },
+    {
+      "id": "alert-panic-keyword",
+      "question": "排查服务 panic 时日志查询的时间范围是什么？",
+      "retrieved": [
+        {
+          "id": "d2ca9503e96eee9364153da657db8408b9c5ab52c6f6fc6eed7ec63d8ca702ca",
+          "rank": 1,
+          "distance": 27590
+        },
+        {
+          "id": "c50d4279421db19e341970315288365faa0e057756f6dc78fdbebe2cf993979b",
+          "rank": 2,
+          "distance": 27693
+        },
+        {
+          "id": "e015ffe86febc678a40b2f8ec87d63b4f7bca99ddef3c5cf5ccf95bb69236fa4",
+          "rank": 3,
+          "distance": 27713
+        },
+        {
+          "id": "6017feb8bdab6d54ceef17b1999cb763830c9209bdfbe4ac0a7199345ed4c8c6",
+          "rank": 4,
+          "distance": 27802
+        }
+      ],
+      "metrics": {
+        "recall_at_k": 1,
+        "mrr": 0.25,
+        "ndcg_at_k": 0.43067655807339306
+      }
+    },
+    {
+      "id": "alert-region-keyword",
+      "question": "地域不匹配问题应该使用什么日志关键字？",
+      "retrieved": [
+        {
+          "id": "d2ca9503e96eee9364153da657db8408b9c5ab52c6f6fc6eed7ec63d8ca702ca",
+          "rank": 1,
+          "distance": 27588
+        },
+        {
+          "id": "f70885e2d68238888099fa77c4867cc52a86cf8f850fdace67132bac8a2f6af6",
+          "rank": 2,
+          "distance": 27592
+        },
+        {
+          "id": "e015ffe86febc678a40b2f8ec87d63b4f7bca99ddef3c5cf5ccf95bb69236fa4",
+          "rank": 3,
+          "distance": 27701
+        },
+        {
+          "id": "6017feb8bdab6d54ceef17b1999cb763830c9209bdfbe4ac0a7199345ed4c8c6",
+          "rank": 4,
+          "distance": 27736
+        },
+        {
+          "id": "c50d4279421db19e341970315288365faa0e057756f6dc78fdbebe2cf993979b",
+          "rank": 5,
+          "distance": 27861
+        }
+      ],
+      "metrics": {
+        "recall_at_k": 1,
+        "mrr": 0.5,
+        "ndcg_at_k": 0.6309297535714574
+      }
+    }
+  ],
+  "aggregates": {
+    "exact_match": {
+      "mean": 0,
+      "count": 0
+    },
+    "judge_completeness": {
+      "mean": 0,
+      "count": 0
+    },
+    "judge_faithfulness": {
+      "mean": 0,
+      "count": 0
+    },
+    "judge_relevance": {
+      "mean": 0,
+      "count": 0
+    },
+    "mrr": {
+      "mean": 0.575,
+      "count": 10
+    },
+    "ndcg_at_k": {
+      "mean": 0.6553889181363095,
+      "count": 10
+    },
+    "recall_at_k": {
+      "mean": 0.9,
+      "count": 10
+    },
+    "token_f1": {
+      "mean": 0,
+      "count": 0
+    },
+    "tool_set_accuracy": {
+      "mean": 0,
+      "count": 0
+    }
+  },
+  "failed_cases": 0
+}

@@ -1,0 +1,2 @@
+{"service":"payment","level":"ERROR","event":"service_offline","message":"pod restarted three times without deployment"}
+{"service":"payment","level":"ERROR","event":"panic","message":"runtime panic while handling request"}
