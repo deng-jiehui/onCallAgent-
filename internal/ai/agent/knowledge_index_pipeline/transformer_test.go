@@ -1,6 +1,38 @@
 package knowledge_index_pipeline
 
-import "testing"
+import (
+	"context"
+	"testing"
+
+	authn "SuperBizAgent/internal/auth"
+	"github.com/cloudwego/eino/components/document"
+	"github.com/cloudwego/eino/schema"
+)
+
+type passthroughTransformer struct{}
+
+func (passthroughTransformer) Transform(_ context.Context, src []*schema.Document, _ ...document.TransformerOption) ([]*schema.Document, error) {
+	return src, nil
+}
+
+func TestTenantScopedTransformerAddsTenantMetadata(t *testing.T) {
+	transformer := tenantScopedTransformer{inner: passthroughTransformer{}}
+	ctx := authn.WithPrincipal(context.Background(), authn.Principal{TenantID: "tenant-acme"})
+	docs, err := transformer.Transform(ctx, []*schema.Document{{MetaData: map[string]any{"source": "runbook.md"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := docs[0].MetaData["tenant_id"]; got != "tenant-acme" {
+		t.Fatalf("tenant metadata = %#v", got)
+	}
+}
+
+func TestTenantScopedTransformerRejectsMissingTenant(t *testing.T) {
+	transformer := tenantScopedTransformer{inner: passthroughTransformer{}}
+	if _, err := transformer.Transform(context.Background(), []*schema.Document{{}}); err == nil {
+		t.Fatal("expected missing tenant scope to fail")
+	}
+}
 
 func TestStableChunkID(t *testing.T) {
 	first := stableChunkID("告警处理手册.md", 2)

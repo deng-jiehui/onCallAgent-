@@ -2,6 +2,7 @@ package main
 
 import (
 	"SuperBizAgent/internal/ai/agent/chat_pipeline"
+	authn "SuperBizAgent/internal/auth"
 	"SuperBizAgent/utility/mem"
 	"context"
 	"fmt"
@@ -10,7 +11,11 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	ctx := authn.WithPrincipal(context.Background(), authn.Principal{
+		TenantID: "local-development",
+		UserID:   "local-development",
+		Username: "local-development",
+	})
 	id := "111"
 	userMessage := &chat_pipeline.UserMessage{
 		ID:      id,

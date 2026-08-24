@@ -14,6 +14,7 @@
 - Phase 1 project README and safe configuration template: implemented and pushed in commit `9feb186`.
 - Phase 2A session identity and in-process coordination: implemented in commit `9a14cec`; the store interface remains the seam for PostgreSQL/Redis.
 - Phase 2B shared PostgreSQL/Redis persistence, tenant-filtered retrieval, and cluster coordination: pending.
+- Phase 2B tenant-scoped Milvus retrieval and indexing metadata: implemented in the current follow-up; retrieval quality tuning and shared persistence remain pending.
 - Phase 3 Agent Runtime, policy routing, and safe tools: pending.
 
 ## Global Constraints
@@ -193,13 +194,13 @@ These phases are not silently dropped when JWT is implemented:
 - [ ] Implement `ConversationStore` with transactional versioned append; append the user/assistant pair atomically.
 - [ ] Add Redis hot-cache reads with PostgreSQL as the source of truth; invalidate or update cache only after a successful database commit.
 - [ ] Add idempotency keys for retries and reject duplicate turn commits.
-- [ ] Add tenant filter/partition enforcement to Milvus and tenant-aware file storage.
+- [x] Add tenant filter enforcement to Milvus retrieval and tenant metadata during knowledge indexing.
 - [ ] Add tests proving identical document IDs, conversation IDs, and user IDs across tenants never cross boundaries.
 
 ### Phase 2B: Retrieval Quality and Tenant Safety
 
-- [ ] Change Retriever options to read `tenant_id` from typed request context and require a tenant filter for production collections.
-- [ ] Choose one isolation strategy per deployment: Milvus partition by tenant or a mandatory scalar filter; reject queries that omit the tenant scope.
+- [x] Change Retriever options to read `tenant_id` from typed request context and require a tenant filter for production collections.
+- [x] Choose the current isolation strategy as a mandatory Milvus JSON scalar filter; reject queries that omit the tenant scope. Partition-based isolation remains an optional deployment optimization.
 - [ ] Raise the default retrieval `topK` from `1` to a configured value such as `3` or `5`, and add a configurable distance threshold.
 - [ ] Preserve retrieval rank and score in metadata and add tests for empty/low-quality recall.
 - [ ] Add an intent-aware retrieval decision so greetings, time queries, and pure follow-ups can skip Milvus when no knowledge lookup is needed.

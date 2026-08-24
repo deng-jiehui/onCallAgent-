@@ -75,6 +75,18 @@ docker compose -f manifest/docker/docker-compose.yml up -d
 
 Milvus 默认监听 `localhost:19530`。首次启动可能需要等待几十秒。
 
+### 按租户建立知识库
+
+知识库索引必须指定租户，避免同名文件跨租户覆盖：
+
+```powershell
+$env:SUPERBIZ_KNOWLEDGE_TENANT_ID = "local-tenant"
+$env:SUPERBIZ_KNOWLEDGE_USER_ID = "knowledge-indexer"
+go run ./internal/ai/cmd/knowledge_cmd
+```
+
+重新索引后，聊天检索会根据登录 JWT 中的 `tenant_id` 过滤文档。
+
 ### MCP 日志服务（可选）
 
 该服务需要镜像和腾讯云 CLS 凭据：

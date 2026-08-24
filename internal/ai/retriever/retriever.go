@@ -2,12 +2,14 @@ package retriever
 
 import (
 	"SuperBizAgent/internal/ai/embedder"
+	authn "SuperBizAgent/internal/auth"
 	"SuperBizAgent/utility/client"
 	"SuperBizAgent/utility/common"
 	"context"
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 
 	"github.com/cloudwego/eino/components/embedding"
 	einoRetriever "github.com/cloudwego/eino/components/retriever"
@@ -15,6 +17,8 @@ import (
 	milvusClient "github.com/milvus-io/milvus-sdk-go/v2/client"
 	"github.com/milvus-io/milvus-sdk-go/v2/entity"
 )
+
+var ErrTenantScopeRequired = fmt.Errorf("authenticated tenant scope is required for retrieval")
 
 type milvusRetriever struct {
 	client    milvusClient.Client
@@ -42,6 +46,10 @@ func NewMilvusRetriever(ctx context.Context) (einoRetriever.Retriever, error) {
 }
 
 func (r *milvusRetriever) Retrieve(ctx context.Context, query string, opts ...einoRetriever.Option) ([]*schema.Document, error) {
+	filter, err := tenantFilterExpression(ctx)
+	if err != nil {
+		return nil, err
+	}
 	options := einoRetriever.GetCommonOptions(&einoRetriever.Options{
 		TopK:      &r.topK,
 		Embedding: r.embedder,
@@ -75,7 +83,7 @@ func (r *milvusRetriever) Retrieve(ctx context.Context, query string, opts ...ei
 		ctx,
 		common.MilvusCollectionName,
 		r.partition,
-		"",
+		filter,
 		[]string{"id"},
 		[]entity.Vector{entity.BinaryVector(vectorToBytes(vectors[0]))},
 		"vector",
@@ -109,6 +117,14 @@ func (r *milvusRetriever) Retrieve(ctx context.Context, query string, opts ...ei
 		return nil, fmt.Errorf("query milvus documents: %w", err)
 	}
 	return documentsForHits(columns, hits, common.MilvusCollectionName)
+}
+
+func tenantFilterExpression(ctx context.Context) (string, error) {
+	principal, ok := authn.PrincipalFromContext(ctx)
+	if !ok || principal.TenantID == "" {
+		return "", ErrTenantScopeRequired
+	}
+	return fmt.Sprintf(`metadata["tenant_id"] == %s`, strconv.Quote(principal.TenantID)), nil
 }
 
 type searchHit struct {

@@ -2,12 +2,17 @@ package main
 
 import (
 	retriever2 "SuperBizAgent/internal/ai/retriever"
+	authn "SuperBizAgent/internal/auth"
 	"context"
 	"fmt"
 )
 
 func main() {
-	ctx := context.Background()
+	ctx := authn.WithPrincipal(context.Background(), authn.Principal{
+		TenantID: "local-development",
+		UserID:   "local-development",
+		Username: "local-development",
+	})
 	r, err := retriever2.NewMilvusRetriever(ctx)
 	if err != nil {
 		panic(err)

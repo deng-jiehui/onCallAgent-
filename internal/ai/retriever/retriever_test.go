@@ -1,11 +1,41 @@
 package retriever
 
 import (
+	"context"
 	"testing"
 
+	authn "SuperBizAgent/internal/auth"
 	"github.com/milvus-io/milvus-sdk-go/v2/client"
 	"github.com/milvus-io/milvus-sdk-go/v2/entity"
 )
+
+func TestTenantFilterExpressionUsesAuthenticatedTenant(t *testing.T) {
+	ctx := authn.WithPrincipal(context.Background(), authn.Principal{TenantID: "tenant-acme"})
+	filter, err := tenantFilterExpression(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filter != `metadata["tenant_id"] == "tenant-acme"` {
+		t.Fatalf("filter = %q", filter)
+	}
+}
+
+func TestTenantFilterExpressionRejectsMissingTenant(t *testing.T) {
+	if _, err := tenantFilterExpression(context.Background()); err == nil {
+		t.Fatal("expected missing tenant scope to fail")
+	}
+}
+
+func TestTenantFilterExpressionEscapesTenantID(t *testing.T) {
+	ctx := authn.WithPrincipal(context.Background(), authn.Principal{TenantID: `tenant"quoted`})
+	filter, err := tenantFilterExpression(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filter != `metadata["tenant_id"] == "tenant\"quoted"` {
+		t.Fatalf("filter = %q", filter)
+	}
+}
 
 func TestSearchHitsPreserveDistanceAndRank(t *testing.T) {
 	results := []client.SearchResult{{

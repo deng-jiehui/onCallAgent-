@@ -13,6 +13,7 @@ import (
 	"SuperBizAgent/internal/ai/agent/chat_pipeline"
 	"SuperBizAgent/internal/ai/models"
 	internalretriever "SuperBizAgent/internal/ai/retriever"
+	authn "SuperBizAgent/internal/auth"
 	"SuperBizAgent/internal/evaluation"
 
 	"github.com/cloudwego/eino/callbacks"
@@ -59,7 +60,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	ctx := context.Background()
+	ctx := authn.WithPrincipal(context.Background(), authn.Principal{
+		TenantID: "evaluation",
+		UserID:   "evaluation",
+		Username: "evaluation",
+	})
 	dependencies := evaluation.Dependencies{}
 	if *runRetrieval {
 		retriever, createErr := internalretriever.NewMilvusRetriever(ctx)

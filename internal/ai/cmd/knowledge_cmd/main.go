@@ -3,12 +3,14 @@ package main
 import (
 	"SuperBizAgent/internal/ai/agent/knowledge_index_pipeline"
 	loader2 "SuperBizAgent/internal/ai/loader"
+	authn "SuperBizAgent/internal/auth"
 	"SuperBizAgent/utility/client"
 	"SuperBizAgent/utility/common"
 	"SuperBizAgent/utility/log_call_back"
 	"context"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -18,7 +20,19 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	tenantID := os.Getenv("SUPERBIZ_KNOWLEDGE_TENANT_ID")
+	if tenantID == "" {
+		panic("SUPERBIZ_KNOWLEDGE_TENANT_ID is required")
+	}
+	userID := os.Getenv("SUPERBIZ_KNOWLEDGE_USER_ID")
+	if userID == "" {
+		userID = "knowledge-indexer"
+	}
+	ctx := authn.WithPrincipal(context.Background(), authn.Principal{
+		TenantID: tenantID,
+		UserID:   userID,
+		Username: userID,
+	})
 	r, err := knowledge_index_pipeline.BuildKnowledgeIndexing(ctx)
 	if err != nil {
 		panic(err)
@@ -51,7 +65,7 @@ func main() {
 			return err
 		}
 		// 查询所有metadata中_source一样的数据并删除
-		expr := sourceFilterExpression(fmt.Sprint(docs[0].MetaData["_source"]))
+		expr := tenantSourceFilterExpression(fmt.Sprint(docs[0].MetaData["_source"]), tenantID)
 		queryResult, err := cli.Query(ctx, common.MilvusCollectionName, []string{}, expr, []string{"id"})
 		if err != nil {
 			return err
@@ -94,4 +108,9 @@ func main() {
 
 func sourceFilterExpression(source string) string {
 	return fmt.Sprintf(`metadata["_source"] == %s`, strconv.Quote(filepath.ToSlash(source)))
+}
+
+func tenantSourceFilterExpression(source, tenantID string) string {
+	return fmt.Sprintf(`metadata["_source"] == %s and metadata["tenant_id"] == %s`,
+		strconv.Quote(filepath.ToSlash(source)), strconv.Quote(tenantID))
 }
