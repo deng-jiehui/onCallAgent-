@@ -35,6 +35,11 @@ func main() {
 		g.Log().Errorf(ctx, "initialize chat agent runtime: %v", err)
 		panic(err)
 	}
+	defer func() {
+		if err := agentRuntime.Close(); err != nil {
+			g.Log().Errorf(ctx, "close chat agent runtime: %v", err)
+		}
+	}()
 	shutdown, err := observability.Init(ctx, observability.LoadConfig(ctx))
 	if err != nil {
 		g.Log().Errorf(ctx, "initialize observability: %v", err)

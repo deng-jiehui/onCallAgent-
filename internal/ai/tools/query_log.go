@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"io"
 	"time"
 
 	e_mcp "github.com/cloudwego/eino-ext/components/tool/mcp"
@@ -21,24 +22,29 @@ https://www.cloudwego.io/zh/docs/eino/ecosystem_integration/tool/tool_mcp/
 https://mcp-go.dev/clients
 */
 func GetLogMcpTool(ctx context.Context) ([]tool.BaseTool, error) {
+	tools, _, err := GetLogMcpToolWithCloser(ctx)
+	return tools, err
+}
+
+func GetLogMcpToolWithCloser(ctx context.Context) ([]tool.BaseTool, io.Closer, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	// https://mcp-api.tencent-cloud.com/sse/XXXX
 	mcpUrl, err := g.Cfg().Get(ctx, "mcp_url")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	cli, err := client.NewSSEMCPClient(mcpUrl.String())
 	if err != nil {
-		return []tool.BaseTool{}, err
+		return []tool.BaseTool{}, nil, err
 	}
 	initCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	err = cli.Start(initCtx)
 	if err != nil {
 		_ = cli.Close()
-		return []tool.BaseTool{}, err
+		return []tool.BaseTool{}, nil, err
 	}
 	initRequest := mcp.InitializeRequest{}
 	initRequest.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
@@ -48,12 +54,12 @@ func GetLogMcpTool(ctx context.Context) ([]tool.BaseTool, error) {
 	}
 	if _, err = cli.Initialize(initCtx, initRequest); err != nil {
 		_ = cli.Close()
-		return []tool.BaseTool{}, err
+		return []tool.BaseTool{}, nil, err
 	}
 	mcpTools, err := e_mcp.GetTools(initCtx, &e_mcp.Config{Cli: cli})
 	if err != nil {
 		_ = cli.Close()
-		return []tool.BaseTool{}, err
+		return []tool.BaseTool{}, nil, err
 	}
-	return mcpTools, nil
+	return mcpTools, cli, nil
 }

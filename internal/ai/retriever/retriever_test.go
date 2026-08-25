@@ -97,3 +97,21 @@ func TestDocumentsForHitsRestoresSearchOrderAndMetadata(t *testing.T) {
 		t.Fatalf("unexpected collection metadata: %#v", got)
 	}
 }
+
+func TestFilterHitsRejectsLowQualityDistances(t *testing.T) {
+	hits := []searchHit{{ID: "good", Distance: 2, Rank: 1}, {ID: "bad", Distance: 20, Rank: 2}}
+	filtered := filterHits(hits, 10)
+	if len(filtered) != 1 || filtered[0].ID != "good" {
+		t.Fatalf("filtered hits = %#v", filtered)
+	}
+	if got := filterHits(hits, 0); len(got) != 2 {
+		t.Fatalf("zero threshold should disable filtering: %#v", got)
+	}
+}
+
+func TestDefaultRetrieverConfigUsesFiveResults(t *testing.T) {
+	cfg := defaultRetrieverConfig()
+	if cfg.TopK != 5 || cfg.DistanceThreshold != nil {
+		t.Fatalf("default retriever config = %#v", cfg)
+	}
+}

@@ -14,6 +14,7 @@ import (
 	"github.com/cloudwego/eino/components/embedding"
 	einoRetriever "github.com/cloudwego/eino/components/retriever"
 	"github.com/cloudwego/eino/schema"
+	"github.com/gogf/gf/v2/frame/g"
 	milvusClient "github.com/milvus-io/milvus-sdk-go/v2/client"
 	"github.com/milvus-io/milvus-sdk-go/v2/entity"
 )
@@ -21,10 +22,33 @@ import (
 var ErrTenantScopeRequired = fmt.Errorf("authenticated tenant scope is required for retrieval")
 
 type milvusRetriever struct {
-	client    milvusClient.Client
-	embedder  embedding.Embedder
-	partition []string
-	topK      int
+	client            milvusClient.Client
+	embedder          embedding.Embedder
+	partition         []string
+	topK              int
+	distanceThreshold *float64
+}
+
+type RetrieverConfig struct {
+	TopK              int
+	DistanceThreshold *float64
+}
+
+func defaultRetrieverConfig() RetrieverConfig { return RetrieverConfig{TopK: 5} }
+
+func loadRetrieverConfig(ctx context.Context) RetrieverConfig {
+	config := defaultRetrieverConfig()
+	if value, err := g.Cfg().Get(ctx, "retriever.top_k"); err == nil && !value.IsNil() {
+		if topK, parseErr := strconv.Atoi(value.String()); parseErr == nil && topK > 0 {
+			config.TopK = topK
+		}
+	}
+	if value, err := g.Cfg().Get(ctx, "retriever.distance_threshold"); err == nil && !value.IsNil() {
+		if threshold, parseErr := strconv.ParseFloat(value.String(), 64); parseErr == nil && threshold > 0 {
+			config.DistanceThreshold = &threshold
+		}
+	}
+	return config
 }
 
 func NewMilvusRetriever(ctx context.Context) (einoRetriever.Retriever, error) {
@@ -38,10 +62,12 @@ func NewMilvusRetriever(ctx context.Context) (einoRetriever.Retriever, error) {
 		return nil, err
 	}
 
+	config := loadRetrieverConfig(ctx)
 	return &milvusRetriever{
-		client:   cli,
-		embedder: eb,
-		topK:     1,
+		client:            cli,
+		embedder:          eb,
+		topK:              config.TopK,
+		distanceThreshold: config.DistanceThreshold,
 	}, nil
 }
 
@@ -99,6 +125,7 @@ func (r *milvusRetriever) Retrieve(ctx context.Context, query string, opts ...ei
 	if err != nil {
 		return nil, err
 	}
+	hits = filterHits(hits, valueOrZero(r.distanceThreshold))
 	if len(hits) == 0 {
 		return []*schema.Document{}, nil
 	}
@@ -117,6 +144,26 @@ func (r *milvusRetriever) Retrieve(ctx context.Context, query string, opts ...ei
 		return nil, fmt.Errorf("query milvus documents: %w", err)
 	}
 	return documentsForHits(columns, hits, common.MilvusCollectionName)
+}
+
+func filterHits(hits []searchHit, threshold float64) []searchHit {
+	if threshold <= 0 {
+		return hits
+	}
+	filtered := make([]searchHit, 0, len(hits))
+	for _, hit := range hits {
+		if hit.Distance <= threshold {
+			filtered = append(filtered, hit)
+		}
+	}
+	return filtered
+}
+
+func valueOrZero(value *float64) float64 {
+	if value == nil {
+		return 0
+	}
+	return *value
 }
 
 func tenantFilterExpression(ctx context.Context) (string, error) {

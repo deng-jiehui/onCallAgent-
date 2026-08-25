@@ -202,8 +202,8 @@ These phases are not silently dropped when JWT is implemented:
 
 - [x] Change Retriever options to read `tenant_id` from typed request context and require a tenant filter for production collections.
 - [x] Choose the current isolation strategy as a mandatory Milvus JSON scalar filter; reject queries that omit the tenant scope. Partition-based isolation remains an optional deployment optimization.
-- [ ] Raise the default retrieval `topK` from `1` to a configured value such as `3` or `5`, and add a configurable distance threshold.
-- [ ] Preserve retrieval rank and score in metadata and add tests for empty/low-quality recall.
+- [x] Raise the default retrieval `topK` from `1` to configured `5`, and add a configurable distance threshold.
+- [x] Preserve retrieval rank and score in metadata and add tests for empty/low-quality recall.
 - [ ] Add an intent-aware retrieval decision so greetings, time queries, and pure follow-ups can skip Milvus when no knowledge lookup is needed.
 - [ ] Add evaluation cases for cross-tenant retrieval, no-recall behavior, and multi-document answers.
 
@@ -217,12 +217,12 @@ These phases are not silently dropped when JWT is implemented:
 - [x] Add a bounded, tenant-aware `TurnLoopRegistry` that lazily reuses one session loop per `SessionKey`, evicts idle sessions without active turns, and stops all loops during shutdown.
 - [x] Migrate long-lived conversations to one Eino `adk.TurnLoop` per conversation for queued turns, input merging, cancellation, and checkpoint/resume instead of implementing another turn loop. The current adapter covers per-conversation queuing and shutdown; durable checkpoint/resume remains a later phase.
 - [x] Add the repository skill `.agents/skills/eino-architecture-engineer` with official v0.9 compatibility, TurnLoop, tool policy, cancellation, and verification guidance.
-- [ ] Add startup health checks and graceful shutdown for Milvus, MCP, and model clients.
+- [ ] Add startup health checks for Milvus, MCP, and model clients. MCP client Close is now owned by `chat_pipeline.Runtime` and invoked during shutdown.
 - [ ] Check SDK concurrency safety with parallel integration tests; keep request-specific state in local variables/context only.
 - [x] Add a `ToolRegistry` execution gate that resolves access from `Principal` tenant/roles and denies unauthenticated or unauthorized calls. Dynamic per-request tool exposure by intent remains a later Eino runtime-state migration.
 - [x] Replace `mysql_crud` model-supplied DSN with a server-side configured data source. Tenant-scoped credential mapping remains a deployment policy step.
 - [x] Make database access read-only by default, validate SQL operations, remove terminal confirmation, replace `log.Fatal` with returned errors, and apply query timeouts.
-- [ ] Make MCP clients use request context, support cancellation, and apply per-tool timeouts; initialization now uses the build context with a bounded handshake and closes failed clients. Runtime-owned client Close and per-tool policy remain pending.
+- [ ] Make MCP clients use request context, support cancellation, and apply per-tool timeouts; initialization uses the build context with a bounded handshake, failed clients close, and successful clients are Runtime-owned. Per-tool call timeout policy remains pending.
 - [ ] Add an `IntentRouter` with explicit routes for direct chat, RAG, logs/MCP, Prometheus, controlled database queries, and plan/execute tasks.
 - [ ] Add a `ModelRouter` for quick/deep/fallback models with per-tenant policy, token budget, timeout, and cost metadata.
 - [x] Treat Graph construction errors as fatal errors; stop ignoring `AddLambdaNode`, `AddRetrieverNode`, and `AddEdge` return values.

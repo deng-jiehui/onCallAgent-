@@ -49,6 +49,8 @@ MySQL 工具使用服务端 `mysql_data_source.dsn` 配置，模型不能传入 
 
 Chat Graph 中的 MCP、Prometheus 和 MySQL 工具经过 `ToolRegistry` 执行期授权；调用必须携带认证 principal，受限工具要求 `operator` 或 `admin` 角色。
 
+RAG 默认检索 `top_k` 为 5，可通过 `retriever.top_k` 和 `retriever.distance_threshold` 配置；距离阈值为 0 时不启用过滤。MCP client 由 Chat Runtime 持有，并在服务关闭时释放。
+
 ## 环境要求
 
 - Go 1.24.4 或兼容的 Go 1.24 工具链
