@@ -11,6 +11,7 @@ import (
 	"SuperBizAgent/internal/logic/sse"
 	"context"
 	"errors"
+	"time"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/schema"
@@ -29,7 +30,7 @@ func NewV1(runtime *chat_pipeline.Runtime) chat.IChatV1 {
 		service:       sse.New(),
 		conversations: conversation.NewMemoryStore(6),
 		coordinator:   conversation.NewCoordinator(),
-		loops:         conversation.NewTurnLoopRegistry(128),
+		loops:         conversation.NewTurnLoopRegistryWithIdle(128, 30*time.Minute),
 		runtime:       runtime,
 	}
 }

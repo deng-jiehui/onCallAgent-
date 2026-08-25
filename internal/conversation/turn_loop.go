@@ -7,6 +7,7 @@ import (
 	"io"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/schema"
@@ -40,6 +41,8 @@ type TurnLoopSession struct {
 
 	stopOnce sync.Once
 	stopped  atomic.Bool
+	active   atomic.Int64
+	lastUsed atomic.Int64
 }
 
 func NewTurnLoopSession(ctx context.Context, key SessionKey, agent adk.Agent) (*TurnLoopSession, error) {
@@ -54,6 +57,7 @@ func NewTurnLoopSession(ctx context.Context, key SessionKey, agent adk.Agent) (*
 	}
 
 	session := &TurnLoopSession{key: key}
+	session.touch()
 	session.loop = adk.NewTurnLoop(adk.TurnLoopConfig[turnRequest, *schema.Message]{
 		GenInput: func(runCtx context.Context, _ *adk.TurnLoop[turnRequest, *schema.Message], items []turnRequest) (*adk.GenInputResult[turnRequest, *schema.Message], error) {
 			if len(items) == 0 {
@@ -103,6 +107,16 @@ func (s *TurnLoopSession) Key() SessionKey { return s.key }
 
 func (s *TurnLoopSession) IsStopped() bool { return s.stopped.Load() }
 
+func (s *TurnLoopSession) IsIdleSince(now time.Time, idle time.Duration) bool {
+	if idle <= 0 || s.IsStopped() || s.active.Load() != 0 {
+		return false
+	}
+	last := time.Unix(0, s.lastUsed.Load())
+	return !last.IsZero() && now.Sub(last) >= idle
+}
+
+func (s *TurnLoopSession) touch() { s.lastUsed.Store(time.Now().UnixNano()) }
+
 func (s *TurnLoopSession) Push(ctx context.Context, input *adk.AgentInput, emit func(TurnEvent) error) error {
 	if input == nil {
 		return ErrTurnInput
@@ -132,13 +146,24 @@ func (s *TurnLoopSession) push(ctx context.Context, input *adk.AgentInput, build
 	if s.IsStopped() {
 		return ErrTurnLoopStopped
 	}
+	s.active.Add(1)
+	s.touch()
+	wrappedEmit := func(event TurnEvent) error {
+		s.touch()
+		err := emit(event)
+		if event.Done || event.Err != nil || err != nil {
+			s.active.Add(-1)
+		}
+		return err
+	}
 	accepted, _ := s.loop.Push(turnRequest{
 		ctx:   ctx,
 		input: input,
 		build: build,
-		emit:  emit,
+		emit:  wrappedEmit,
 	})
 	if !accepted {
+		s.active.Add(-1)
 		return ErrTurnLoopStopped
 	}
 	return nil

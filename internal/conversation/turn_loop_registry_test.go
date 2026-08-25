@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/schema"
@@ -99,6 +100,26 @@ func TestTurnLoopRegistryRecreatesStoppedSession(t *testing.T) {
 	if err := registry.StopAll(context.Background()); err != nil {
 		t.Fatalf("stop recreated session: %v", err)
 	}
+}
+
+func TestTurnLoopRegistryEvictsIdleSessions(t *testing.T) {
+	registry := NewTurnLoopRegistryWithIdle(2, 20*time.Millisecond)
+	agent := &registryTestAgent{}
+	key := SessionKey{TenantID: "tenant", UserID: "user", ConversationID: "conversation"}
+	if _, err := registry.GetOrCreate(context.Background(), key, func(context.Context) (adk.Agent, error) {
+		return agent, nil
+	}); err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	defer registry.StopAll(context.Background())
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if registry.Len() == 0 {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatal("idle session was not evicted")
 }
 
 type registryTestAgent struct{}
