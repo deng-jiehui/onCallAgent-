@@ -9,12 +9,18 @@ import (
 	"SuperBizAgent/internal/ai/agent/chat_pipeline"
 	"SuperBizAgent/internal/conversation"
 	"SuperBizAgent/internal/logic/sse"
+	"context"
+	"errors"
+
+	"github.com/cloudwego/eino/adk"
+	"github.com/cloudwego/eino/schema"
 )
 
 type ControllerV1 struct {
 	service       *sse.Service
 	conversations *conversation.MemoryStore
 	coordinator   *conversation.Coordinator
+	loops         *conversation.TurnLoopRegistry
 	runtime       *chat_pipeline.Runtime
 }
 
@@ -23,6 +29,34 @@ func NewV1(runtime *chat_pipeline.Runtime) chat.IChatV1 {
 		service:       sse.New(),
 		conversations: conversation.NewMemoryStore(6),
 		coordinator:   conversation.NewCoordinator(),
+		loops:         conversation.NewTurnLoopRegistry(128),
 		runtime:       runtime,
 	}
+}
+
+func (c *ControllerV1) turnSession(ctx context.Context, key conversation.SessionKey) (*conversation.TurnLoopSession, error) {
+	if c.runtime == nil || c.runtime.ADKAgent == nil {
+		return nil, errors.New("chat agent runtime is not initialized")
+	}
+	return c.loops.GetOrCreate(ctx, key, func(context.Context) (adk.Agent, error) {
+		return c.runtime.ADKAgent, nil
+	})
+}
+
+func (c *ControllerV1) buildTurnInput(ctx context.Context, key conversation.SessionKey, question string) (*adk.AgentInput, error) {
+	history, _, err := c.conversations.Load(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	messages := make([]*schema.Message, 0, len(history)+1)
+	messages = append(messages, history...)
+	messages = append(messages, schema.UserMessage(question))
+	return &adk.AgentInput{Messages: messages}, nil
+}
+
+func (c *ControllerV1) Close(ctx context.Context) error {
+	if c.loops == nil {
+		return nil
+	}
+	return c.loops.StopAll(ctx)
 }

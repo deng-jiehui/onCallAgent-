@@ -2,11 +2,12 @@ package chat
 
 import (
 	"SuperBizAgent/api/chat/v1"
-	"SuperBizAgent/internal/ai/agent/chat_pipeline"
+	"SuperBizAgent/internal/conversation"
 	"SuperBizAgent/internal/observability"
 	"context"
 	"errors"
 
+	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/schema"
 )
 
@@ -20,39 +21,42 @@ func (c *ControllerV1) Chat(ctx context.Context, req *v1.ChatReq) (res *v1.ChatR
 		return nil, err
 	}
 
-	var answer string
-	err = c.coordinator.Run(ctx, key, func(runCtx context.Context) error {
-		history, _, loadErr := c.conversations.Load(runCtx, key)
-		if loadErr != nil {
-			return loadErr
-		}
-		userMessage := &chat_pipeline.UserMessage{
-			ID:      id,
-			Query:   msg,
-			History: history,
-		}
-		if c.runtime == nil || c.runtime.Agent == nil {
-			return errors.New("chat agent runtime is not initialized")
-		}
-		out, invokeErr := c.runtime.Agent.Invoke(runCtx, userMessage)
-		if invokeErr != nil {
-			return invokeErr
-		}
-		if out == nil {
-			return errors.New("chat agent returned empty response")
-		}
-		if appendErr := c.conversations.Append(runCtx, key, schema.UserMessage(msg), schema.AssistantMessage(out.Content, nil)); appendErr != nil {
-			return appendErr
-		}
-		answer = out.Content
-		return nil
-	})
+	session, err := c.turnSession(ctx, key)
 	if err != nil {
 		return nil, err
 	}
-	res = &v1.ChatRes{
-		Answer: answer,
+	events := make(chan conversation.TurnEvent, 4)
+	var answer string
+	emit := func(event conversation.TurnEvent) error {
+		if event.Message != nil {
+			answer = event.Message.Content
+		}
+		if event.Done && event.Err == nil {
+			if answer == "" {
+				event.Err = errors.New("chat agent returned empty response")
+			} else if appendErr := c.conversations.Append(ctx, key, schema.UserMessage(msg), schema.AssistantMessage(answer, nil)); appendErr != nil {
+				event.Err = appendErr
+			}
+		}
+		events <- event
+		return nil
 	}
-
-	return res, nil
+	if err := session.PushBuild(ctx, func(runCtx context.Context) (*adk.AgentInput, error) {
+		return c.buildTurnInput(runCtx, key, msg)
+	}, emit); err != nil {
+		return nil, err
+	}
+	for {
+		select {
+		case event := <-events:
+			if event.Err != nil {
+				return nil, event.Err
+			}
+			if event.Done {
+				return &v1.ChatRes{Answer: answer}, nil
+			}
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
 }

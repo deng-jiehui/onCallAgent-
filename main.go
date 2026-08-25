@@ -53,6 +53,16 @@ func main() {
 	}
 	common.FileDir = fileDir.String()
 	s := g.Server()
+	chatController := chat.NewV1(agentRuntime)
+	if closable, ok := chatController.(interface{ Close(context.Context) error }); ok {
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := closable.Close(shutdownCtx); err != nil {
+				g.Log().Errorf(ctx, "shutdown chat sessions: %v", err)
+			}
+		}()
+	}
 	s.Group("/api/auth", func(group *ghttp.RouterGroup) {
 		group.Middleware(middleware.CORSMiddleware)
 		group.Middleware(middleware.ResponseMiddleware)
@@ -62,7 +72,7 @@ func main() {
 		group.Middleware(middleware.CORSMiddleware)
 		group.Middleware(authService.Middleware)
 		group.Middleware(middleware.ResponseMiddleware)
-		group.Bind(chat.NewV1(agentRuntime))
+		group.Bind(chatController)
 	})
 	s.SetPort(6872)
 	s.Run()

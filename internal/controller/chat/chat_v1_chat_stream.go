@@ -2,13 +2,13 @@ package chat
 
 import (
 	"SuperBizAgent/api/chat/v1"
-	"SuperBizAgent/internal/ai/agent/chat_pipeline"
+	"SuperBizAgent/internal/conversation"
 	"SuperBizAgent/internal/observability"
 	"context"
 	"errors"
-	"io"
 	"strings"
 
+	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/schema"
 	"github.com/gogf/gf/v2/frame/g"
 )
@@ -28,49 +28,52 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 		return nil, err
 	}
 
-	err = c.coordinator.Run(ctx, key, func(runCtx context.Context) error {
-		history, _, loadErr := c.conversations.Load(runCtx, key)
-		if loadErr != nil {
-			return loadErr
-		}
-		userMessage := &chat_pipeline.UserMessage{
-			ID:      id,
-			Query:   msg,
-			History: history,
-		}
-		if c.runtime == nil || c.runtime.Agent == nil {
-			return errors.New("chat agent runtime is not initialized")
-		}
-		sr, streamErr := c.runtime.Agent.Stream(runCtx, userMessage)
-		if streamErr != nil {
-			return streamErr
-		}
-		defer sr.Close()
-
-		var fullResponse strings.Builder
-		for {
-			chunk, recvErr := sr.Recv()
-			if errors.Is(recvErr, io.EOF) {
-				completeResponse := fullResponse.String()
-				if completeResponse == "" {
-					return errors.New("chat agent returned empty stream")
-				}
-				if appendErr := c.conversations.Append(runCtx, key, schema.UserMessage(msg), schema.AssistantMessage(completeResponse, nil)); appendErr != nil {
-					return appendErr
-				}
-				client.SendToClient("done", "Stream completed")
-				return nil
-			}
-			if recvErr != nil {
-				return recvErr
-			}
-			fullResponse.WriteString(chunk.Content)
-			client.SendToClient("message", chunk.Content)
-		}
-	})
+	session, err := c.turnSession(ctx, key)
 	if err != nil {
 		client.SendToClient("error", err.Error())
 		return nil, err
 	}
-	return &v1.ChatStreamRes{}, nil
+	var fullResponse strings.Builder
+	done := make(chan error, 1)
+	emit := func(event conversation.TurnEvent) error {
+		if event.Message != nil {
+			fullResponse.WriteString(event.Message.Content)
+			client.SendToClient("message", event.Message.Content)
+		}
+		if !event.Done {
+			return nil
+		}
+		if event.Err != nil {
+			done <- event.Err
+			return nil
+		}
+		completeResponse := fullResponse.String()
+		if completeResponse == "" {
+			done <- errors.New("chat agent returned empty stream")
+			return nil
+		}
+		if appendErr := c.conversations.Append(ctx, key, schema.UserMessage(msg), schema.AssistantMessage(completeResponse, nil)); appendErr != nil {
+			done <- appendErr
+			return nil
+		}
+		client.SendToClient("done", "Stream completed")
+		done <- nil
+		return nil
+	}
+	if err := session.PushBuild(ctx, func(runCtx context.Context) (*adk.AgentInput, error) {
+		return c.buildTurnInput(runCtx, key, msg)
+	}, emit); err != nil {
+		client.SendToClient("error", err.Error())
+		return nil, err
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			client.SendToClient("error", err.Error())
+			return nil, err
+		}
+		return &v1.ChatStreamRes{}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }

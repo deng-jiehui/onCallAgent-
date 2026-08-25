@@ -95,6 +95,37 @@ func TestTurnLoopSessionsRunDifferentConversationsConcurrently(t *testing.T) {
 	waitDone(t, secondEvents)
 }
 
+func TestTurnLoopSessionBuildsQueuedInputWhenTurnStarts(t *testing.T) {
+	agent := &turnLoopTestAgent{started: make(chan struct{}, 4), release: make(chan struct{})}
+	session := newTestTurnLoopSession(t, "tenant-a", "user-a", "conversation-a", agent)
+	defer session.Stop(context.Background())
+
+	firstEvents := make(chan TurnEvent, 2)
+	secondEvents := make(chan TurnEvent, 2)
+	pushTurn(t, session, "first", firstEvents)
+	var builds atomic.Int32
+	err := session.PushBuild(context.Background(), func(context.Context) (*adk.AgentInput, error) {
+		builds.Add(1)
+		return &adk.AgentInput{Messages: []*schema.Message{schema.UserMessage("second")}}, nil
+	}, func(event TurnEvent) error {
+		secondEvents <- event
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("PushBuild returned error: %v", err)
+	}
+	waitSignal(t, agent.started)
+	if got := builds.Load(); got != 0 {
+		t.Fatalf("queued input was built before its turn started, builds=%d", got)
+	}
+	close(agent.release)
+	waitDone(t, firstEvents)
+	waitDone(t, secondEvents)
+	if got := builds.Load(); got != 1 {
+		t.Fatalf("expected one queued input build, got %d", got)
+	}
+}
+
 func newTestTurnLoopSession(t *testing.T, tenant, user, conversationID string, agent adk.Agent) *TurnLoopSession {
 	t.Helper()
 	session, err := NewTurnLoopSession(context.Background(), SessionKey{

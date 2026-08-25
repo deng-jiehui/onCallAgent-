@@ -26,6 +26,7 @@ type TurnEvent struct {
 type turnRequest struct {
 	ctx   context.Context
 	input *adk.AgentInput
+	build func(context.Context) (*adk.AgentInput, error)
 	emit  func(TurnEvent) error
 }
 
@@ -56,16 +57,36 @@ func NewTurnLoopSession(ctx context.Context, key SessionKey, agent adk.Agent) (*
 			if len(items) == 0 {
 				return nil, ErrTurnInput
 			}
-			item := items[0]
-			if item.ctx == nil {
-				item.ctx = runCtx
+			for index, item := range items {
+				if item.ctx == nil {
+					item.ctx = runCtx
+				}
+				if item.build != nil {
+					input, err := item.build(item.ctx)
+					if err != nil {
+						if emitErr := item.emit(TurnEvent{Err: err, Done: true}); emitErr != nil {
+							return nil, emitErr
+						}
+						continue
+					}
+					item.input = input
+				}
+				if item.input == nil || len(item.input.Messages) == 0 {
+					if emitErr := item.emit(TurnEvent{Err: ErrTurnInput, Done: true}); emitErr != nil {
+						return nil, emitErr
+					}
+					continue
+				}
+				remaining := append([]turnRequest{}, items[:index]...)
+				remaining = append(remaining, items[index+1:]...)
+				return &adk.GenInputResult[turnRequest, *schema.Message]{
+					RunCtx:    item.ctx,
+					Input:     cloneAgentInput(item.input),
+					Consumed:  []turnRequest{item},
+					Remaining: remaining,
+				}, nil
 			}
-			return &adk.GenInputResult[turnRequest, *schema.Message]{
-				RunCtx:    item.ctx,
-				Input:     item.input,
-				Consumed:  []turnRequest{item},
-				Remaining: items[1:],
-			}, nil
+			return nil, ErrTurnInput
 		},
 		PrepareAgent: func(context.Context, *adk.TurnLoop[turnRequest, *schema.Message], []turnRequest) (adk.Agent, error) {
 			return agent, nil
@@ -79,10 +100,26 @@ func NewTurnLoopSession(ctx context.Context, key SessionKey, agent adk.Agent) (*
 func (s *TurnLoopSession) Key() SessionKey { return s.key }
 
 func (s *TurnLoopSession) Push(ctx context.Context, input *adk.AgentInput, emit func(TurnEvent) error) error {
+	if input == nil {
+		return ErrTurnInput
+	}
+	return s.push(ctx, cloneAgentInput(input), nil, emit)
+}
+
+// PushBuild queues a request whose input is constructed only when its turn
+// starts. This is the safe path for loading conversation history.
+func (s *TurnLoopSession) PushBuild(ctx context.Context, build func(context.Context) (*adk.AgentInput, error), emit func(TurnEvent) error) error {
+	if build == nil {
+		return ErrTurnInput
+	}
+	return s.push(ctx, nil, build, emit)
+}
+
+func (s *TurnLoopSession) push(ctx context.Context, input *adk.AgentInput, build func(context.Context) (*adk.AgentInput, error), emit func(TurnEvent) error) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	if input == nil || len(input.Messages) == 0 || emit == nil {
+	if (input == nil || len(input.Messages) == 0) && build == nil || emit == nil {
 		return ErrTurnInput
 	}
 	if err := contextErr(ctx); err != nil {
@@ -90,7 +127,8 @@ func (s *TurnLoopSession) Push(ctx context.Context, input *adk.AgentInput, emit 
 	}
 	accepted, _ := s.loop.Push(turnRequest{
 		ctx:   ctx,
-		input: cloneAgentInput(input),
+		input: input,
+		build: build,
 		emit:  emit,
 	})
 	if !accepted {
