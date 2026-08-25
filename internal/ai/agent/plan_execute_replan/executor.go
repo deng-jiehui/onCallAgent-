@@ -13,7 +13,7 @@ import (
 
 func NewExecutor(ctx context.Context) (adk.Agent, error) {
 	// log
-	mcpTool, err := tools.GetLogMcpTool()
+	mcpTool, err := tools.GetLogMcpTool(ctx)
 	if err != nil {
 		log.Printf("mcp tools unavailable, continuing without mcp tools: %v", err)
 		mcpTool = nil

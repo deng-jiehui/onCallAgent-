@@ -28,7 +28,7 @@ func main() {
 		panic(err)
 	}
 	// 获取工具信息, 用于绑定到 ChatModel
-	toolList, _ := tools2.GetLogMcpTool()
+	toolList, _ := tools2.GetLogMcpTool(ctx)
 	toolList = append(toolList, tools2.NewGetCurrentTimeTool())
 	toolInfos := make([]*schema.ToolInfo, 0)
 	var info *schema.ToolInfo

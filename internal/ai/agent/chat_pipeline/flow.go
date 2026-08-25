@@ -23,7 +23,7 @@ func newReactAgentLambda(ctx context.Context) (lba *compose.Lambda, err error) {
 	//if err != nil {
 	//	return nil, err
 	//}
-	mcpTool, err := tools.GetLogMcpTool()
+	mcpTool, err := tools.GetLogMcpTool(ctx)
 	if err != nil {
 		log.Printf("mcp tools unavailable, continuing without mcp tools: %v", err)
 		mcpTool = nil

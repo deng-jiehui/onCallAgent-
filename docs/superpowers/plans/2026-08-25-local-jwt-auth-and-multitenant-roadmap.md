@@ -221,7 +221,7 @@ These phases are not silently dropped when JWT is implemented:
 - [ ] Add a `ToolRegistry` that resolves tools from `Principal`, tenant policy, and request intent; never expose every tool to every user.
 - [x] Replace `mysql_crud` model-supplied DSN with a server-side configured data source. Tenant-scoped credential mapping remains a deployment policy step.
 - [x] Make database access read-only by default, validate SQL operations, remove terminal confirmation, replace `log.Fatal` with returned errors, and apply query timeouts.
-- [ ] Make MCP clients use request context, support cancellation, and apply per-tool timeouts; do not initialize MCP clients with `context.Background()` in request paths.
+- [ ] Make MCP clients use request context, support cancellation, and apply per-tool timeouts; initialization now uses the build context with a bounded handshake and closes failed clients. Runtime-owned client Close and per-tool policy remain pending.
 - [ ] Add an `IntentRouter` with explicit routes for direct chat, RAG, logs/MCP, Prometheus, controlled database queries, and plan/execute tasks.
 - [ ] Add a `ModelRouter` for quick/deep/fallback models with per-tenant policy, token budget, timeout, and cost metadata.
 - [x] Treat Graph construction errors as fatal errors; stop ignoring `AddLambdaNode`, `AddRetrieverNode`, and `AddEdge` return values.
