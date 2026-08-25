@@ -58,11 +58,13 @@ func main() {
 		g.Log().Errorf(ctx, "load conversation store config: %v", err)
 		panic(err)
 	}
-	conversationStore, conversationDB, err := conversation.OpenConfiguredStore(ctx, storeConfig)
+	conversationResources, err := conversation.OpenConfiguredStoreResources(ctx, storeConfig)
 	if err != nil {
 		g.Log().Errorf(ctx, "initialize conversation store: %v", err)
 		panic(err)
 	}
+	conversationStore := conversationResources.Store
+	conversationDB := conversationResources.DB
 	if conversationDB != nil {
 		defer func() {
 			if err := conversationDB.Close(); err != nil {
@@ -78,7 +80,7 @@ func main() {
 		}()
 	}
 	s := g.Server()
-	chatController := chat.NewV1WithStore(agentRuntime, conversationStore)
+	chatController := chat.NewV1WithStoreAndLocker(agentRuntime, conversationStore, conversationResources.Locker)
 	if closable, ok := chatController.(interface{ Close(context.Context) error }); ok {
 		defer func() {
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

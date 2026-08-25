@@ -230,7 +230,7 @@ These phases are not silently dropped when JWT is implemented:
 ### Phase 4: High-Concurrency and Streaming Governance
 
 - [x] Add an instance-level Agent turn limiter; cluster-level Redis tenant quotas remain a later multi-instance step.
-- [ ] Add Redis-backed conversation locks/queues with lease, renewal, bounded wait, and cancellation behavior.
+- [x] Add Redis-backed conversation locks with lease, renewal, bounded wait, token-safe release, and cancellation behavior. Queue depth/load testing remains pending.
 - [x] Refactor SSE to a single writer with a bounded queue; stop Agent/model/tool work when the client disconnects. The current queue is instance-local and bounded by event count; byte-based limits remain a tuning item.
 - [x] Ensure incomplete streams are not committed as assistant history; commit before sending the terminal `done` event.
 - [x] Fix the generic response middleware so it cannot append JSON to an SSE response.

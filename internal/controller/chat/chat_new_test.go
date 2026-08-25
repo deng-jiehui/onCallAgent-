@@ -38,6 +38,44 @@ func TestNewV1WithStoreUsesInjectedConversationStore(t *testing.T) {
 	}
 }
 
+func TestControllerAcquiresOptionalConversationLock(t *testing.T) {
+	locker := &testConversationLocker{}
+	controller := &ControllerV1{locker: locker}
+	key := conversation.SessionKey{TenantID: "tenant", UserID: "user", ConversationID: "conversation"}
+	_, release, err := controller.lockTurn(context.Background(), key)
+	if err != nil {
+		t.Fatalf("lockTurn returned error: %v", err)
+	}
+	if locker.locks != 1 {
+		t.Fatalf("lock calls=%d, want 1", locker.locks)
+	}
+	release()
+	if locker.unlocks != 1 {
+		t.Fatalf("unlock calls=%d, want 1", locker.unlocks)
+	}
+}
+
+type testConversationLocker struct {
+	locks   int
+	unlocks int
+}
+
+func (l *testConversationLocker) Lock(context.Context, conversation.SessionKey) (conversation.ConversationLease, error) {
+	l.locks++
+	return &testConversationLease{owner: l}, nil
+}
+
+type testConversationLease struct{ owner *testConversationLocker }
+
+func (l *testConversationLease) Renew(context.Context) error { return nil }
+func (l *testConversationLease) Unlock(context.Context) error {
+	l.owner.unlocks++
+	return nil
+}
+func (l *testConversationLease) StartRenewal(context.Context) <-chan error {
+	return make(chan error)
+}
+
 func TestNewV1InitializesTurnLoopRegistry(t *testing.T) {
 	controller, ok := NewV1(&chat_pipeline.Runtime{}).(*ControllerV1)
 	if !ok {

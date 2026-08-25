@@ -30,6 +30,13 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 	if err != nil {
 		return nil, err
 	}
+	turnCtx, releaseLock, err := c.lockTurn(ctx, key)
+	if err != nil {
+		_ = client.SendToClient("error", err.Error())
+		client.Finish()
+		return nil, err
+	}
+	defer releaseLock()
 
 	session, err := c.turnSession(ctx, key)
 	if err != nil {
@@ -39,7 +46,7 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 	var fullResponse strings.Builder
 	done := make(chan error, 1)
 	if c.limiter != nil {
-		if err := c.limiter.Acquire(ctx); err != nil {
+		if err := c.limiter.Acquire(turnCtx); err != nil {
 			_ = client.SendToClient("error", err.Error())
 			client.Finish()
 			return nil, err
@@ -85,7 +92,7 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 			done <- errors.New("chat agent returned empty stream")
 			return nil
 		}
-		if appendErr := appendTurn(ctx, c.conversations, key, idempotencyKey, schema.UserMessage(msg), schema.AssistantMessage(completeResponse, nil)); appendErr != nil {
+		if appendErr := appendTurn(turnCtx, c.conversations, key, idempotencyKey, schema.UserMessage(msg), schema.AssistantMessage(completeResponse, nil)); appendErr != nil {
 			release()
 			done <- appendErr
 			return nil
@@ -99,7 +106,7 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 		release()
 		return nil
 	}
-	if err := session.PushBuild(ctx, func(runCtx context.Context) (*adk.AgentInput, error) {
+	if err := session.PushBuild(turnCtx, func(runCtx context.Context) (*adk.AgentInput, error) {
 		return c.buildTurnInput(runCtx, key, msg)
 	}, emit); err != nil {
 		release()
@@ -116,8 +123,8 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 		}
 		finishClient()
 		return &v1.ChatStreamRes{}, nil
-	case <-ctx.Done():
+	case <-turnCtx.Done():
 		finishClient()
-		return nil, ctx.Err()
+		return nil, turnCtx.Err()
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"SuperBizAgent/internal/logic/sse"
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/cloudwego/eino/adk"
@@ -23,6 +24,7 @@ type ControllerV1 struct {
 	coordinator   *conversation.Coordinator
 	loops         *conversation.TurnLoopRegistry
 	limiter       *conversation.RunLimiter
+	locker        conversation.ConversationLocker
 	runtime       *chat_pipeline.Runtime
 }
 
@@ -45,6 +47,10 @@ func NewV1(runtime *chat_pipeline.Runtime) chat.IChatV1 {
 // NewV1WithStore allows deployment wiring to select a durable conversation
 // store. A nil store retains the development-friendly memory implementation.
 func NewV1WithStore(runtime *chat_pipeline.Runtime, store conversation.ConversationStore) chat.IChatV1 {
+	return NewV1WithStoreAndLocker(runtime, store, nil)
+}
+
+func NewV1WithStoreAndLocker(runtime *chat_pipeline.Runtime, store conversation.ConversationStore, locker conversation.ConversationLocker) chat.IChatV1 {
 	if store == nil {
 		store = conversation.NewMemoryStore(6)
 	}
@@ -54,8 +60,34 @@ func NewV1WithStore(runtime *chat_pipeline.Runtime, store conversation.Conversat
 		coordinator:   conversation.NewCoordinator(),
 		loops:         conversation.NewTurnLoopRegistryWithIdle(128, 30*time.Minute),
 		limiter:       conversation.NewRunLimiter(100),
+		locker:        locker,
 		runtime:       runtime,
 	}
+}
+
+func (c *ControllerV1) lockTurn(ctx context.Context, key conversation.SessionKey) (context.Context, func(), error) {
+	if c.locker == nil {
+		return ctx, func() {}, nil
+	}
+	lockCtx, cancel := context.WithCancel(ctx)
+	lease, err := c.locker.Lock(lockCtx, key)
+	if err != nil {
+		cancel()
+		return nil, nil, err
+	}
+	renewalDone := lease.StartRenewal(lockCtx)
+	go func() {
+		if renewalErr, ok := <-renewalDone; ok && renewalErr != nil {
+			cancel()
+		}
+	}()
+	var once sync.Once
+	return lockCtx, func() {
+		once.Do(func() {
+			cancel()
+			_ = lease.Unlock(context.Background())
+		})
+	}, nil
 }
 
 func (c *ControllerV1) turnSession(ctx context.Context, key conversation.SessionKey) (*conversation.TurnLoopSession, error) {

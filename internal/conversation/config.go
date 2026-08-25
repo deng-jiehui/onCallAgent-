@@ -26,6 +26,12 @@ type StoreConfig struct {
 	CacheTTL    time.Duration
 }
 
+type StoreResources struct {
+	Store  ConversationStore
+	DB     *sql.DB
+	Locker ConversationLocker
+}
+
 func ParseStoreConfig(values map[string]string) (StoreConfig, error) {
 	cfg := StoreConfig{Backend: "memory", MaxMessages: 20, CacheTTL: 5 * time.Minute}
 	if value := strings.TrimSpace(values["backend"]); value != "" {
@@ -77,40 +83,54 @@ func LoadStoreConfig(ctx context.Context) (StoreConfig, error) {
 }
 
 func OpenConfiguredStore(ctx context.Context, cfg StoreConfig) (ConversationStore, *sql.DB, error) {
+	resources, err := OpenConfiguredStoreResources(ctx, cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	return resources.Store, resources.DB, nil
+}
+
+func OpenConfiguredStoreResources(ctx context.Context, cfg StoreConfig) (*StoreResources, error) {
 	if cfg.Backend == "memory" {
-		return NewMemoryStore(cfg.MaxMessages), nil, nil
+		return &StoreResources{Store: NewMemoryStore(cfg.MaxMessages)}, nil
 	}
 	if cfg.Backend != "postgres" {
-		return nil, nil, fmt.Errorf("%w: %s", ErrConversationBackend, cfg.Backend)
+		return nil, fmt.Errorf("%w: %s", ErrConversationBackend, cfg.Backend)
 	}
 	db, err := openPostgres(ctx, cfg.DSN)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	store, err := NewSQLStore(db, cfg.MaxMessages)
 	if err != nil {
 		_ = db.Close()
-		return nil, nil, err
+		return nil, err
 	}
 	if cfg.RedisURL == "" {
-		return store, db, nil
+		return &StoreResources{Store: store, DB: db}, nil
 	}
 	options, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
 		_ = db.Close()
-		return nil, nil, fmt.Errorf("parse conversation redis URL: %w", err)
+		return nil, fmt.Errorf("parse conversation redis URL: %w", err)
 	}
 	redisClient := redis.NewClient(options)
 	if err := redisClient.Ping(ctx).Err(); err != nil {
 		_ = redisClient.Close()
 		_ = db.Close()
-		return nil, nil, fmt.Errorf("ping conversation redis: %w", err)
+		return nil, fmt.Errorf("ping conversation redis: %w", err)
 	}
 	cache, err := NewRedisConversationCache(redisClient)
 	if err != nil {
 		_ = redisClient.Close()
 		_ = db.Close()
-		return nil, nil, err
+		return nil, err
 	}
-	return NewCachedStore(store, cache, cfg.CacheTTL), db, nil
+	locker, err := NewRedisConversationLocker(redisClient, 30*time.Second)
+	if err != nil {
+		_ = redisClient.Close()
+		_ = db.Close()
+		return nil, err
+	}
+	return &StoreResources{Store: NewCachedStore(store, cache, cfg.CacheTTL), DB: db, Locker: locker}, nil
 }

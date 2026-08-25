@@ -35,6 +35,8 @@ PostgreSQL 会话存储已支持配置化启动。默认 `conversation.backend: 
 
 PostgreSQL 模式可选配置 `conversation.redis.url` 和 `conversation.redis.cache_ttl` 启用 Redis 热缓存。PostgreSQL 是唯一数据源；缓存不可用时自动回源，数据库提交成功后才删除旧缓存。
 
+配置 Redis URL 后，Controller 还会为每个完整会话键建立分布式租约锁，跨实例请求会等待同一会话释放；租约会自动续期，客户端取消或续租失败会取消当前 turn。
+
 MySQL 工具使用服务端 `mysql_data_source.dsn` 配置，模型不能传入 DSN；当前默认只允许单条只读查询（`SELECT`、`SHOW`、`DESCRIBE`、`EXPLAIN`），并应用查询超时。生产环境仍需为每个租户配置独立的数据源和凭据映射。
 
 ## 环境要求

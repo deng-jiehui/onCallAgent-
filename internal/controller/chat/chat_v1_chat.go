@@ -22,6 +22,11 @@ func (c *ControllerV1) Chat(ctx context.Context, req *v1.ChatReq) (res *v1.ChatR
 	if err != nil {
 		return nil, err
 	}
+	turnCtx, releaseLock, err := c.lockTurn(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	defer releaseLock()
 
 	session, err := c.turnSession(ctx, key)
 	if err != nil {
@@ -29,7 +34,7 @@ func (c *ControllerV1) Chat(ctx context.Context, req *v1.ChatReq) (res *v1.ChatR
 	}
 	events := make(chan conversation.TurnEvent, 4)
 	if c.limiter != nil {
-		if err := c.limiter.Acquire(ctx); err != nil {
+		if err := c.limiter.Acquire(turnCtx); err != nil {
 			return nil, err
 		}
 	}
@@ -49,7 +54,7 @@ func (c *ControllerV1) Chat(ctx context.Context, req *v1.ChatReq) (res *v1.ChatR
 		if event.Done && event.Err == nil {
 			if answer == "" {
 				event.Err = errors.New("chat agent returned empty response")
-			} else if appendErr := appendTurn(ctx, c.conversations, key, idempotencyKey, schema.UserMessage(msg), schema.AssistantMessage(answer, nil)); appendErr != nil {
+			} else if appendErr := appendTurn(turnCtx, c.conversations, key, idempotencyKey, schema.UserMessage(msg), schema.AssistantMessage(answer, nil)); appendErr != nil {
 				event.Err = appendErr
 			}
 		}
@@ -59,7 +64,7 @@ func (c *ControllerV1) Chat(ctx context.Context, req *v1.ChatReq) (res *v1.ChatR
 		events <- event
 		return nil
 	}
-	if err := session.PushBuild(ctx, func(runCtx context.Context) (*adk.AgentInput, error) {
+	if err := session.PushBuild(turnCtx, func(runCtx context.Context) (*adk.AgentInput, error) {
 		return c.buildTurnInput(runCtx, key, msg)
 	}, emit); err != nil {
 		release()
@@ -74,8 +79,8 @@ func (c *ControllerV1) Chat(ctx context.Context, req *v1.ChatReq) (res *v1.ChatR
 			if event.Done {
 				return &v1.ChatRes{Answer: answer}, nil
 			}
-		case <-ctx.Done():
-			return nil, ctx.Err()
+		case <-turnCtx.Done():
+			return nil, turnCtx.Err()
 		}
 	}
 }
