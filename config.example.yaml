@@ -34,3 +34,9 @@ doubao_embedding_model:
 
 file_dir: "./internal/ai/cmd/knowledge_cmd/docs"
 mcp_url: "http://localhost:3100/sse"
+
+conversation:
+  backend: "memory" # memory or postgres
+  max_messages: 20
+  postgres:
+    dsn: "${SUPERBIZ_CONVERSATION_POSTGRES_DSN}"

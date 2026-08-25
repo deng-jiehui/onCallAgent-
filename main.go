@@ -5,6 +5,7 @@ import (
 	authn "SuperBizAgent/internal/auth"
 	authcontroller "SuperBizAgent/internal/controller/auth"
 	"SuperBizAgent/internal/controller/chat"
+	"SuperBizAgent/internal/conversation"
 	"SuperBizAgent/internal/observability"
 	"SuperBizAgent/utility/common"
 	"SuperBizAgent/utility/middleware"
@@ -52,8 +53,25 @@ func main() {
 		panic(err)
 	}
 	common.FileDir = fileDir.String()
+	storeConfig, err := conversation.LoadStoreConfig(ctx)
+	if err != nil {
+		g.Log().Errorf(ctx, "load conversation store config: %v", err)
+		panic(err)
+	}
+	conversationStore, conversationDB, err := conversation.OpenConfiguredStore(ctx, storeConfig)
+	if err != nil {
+		g.Log().Errorf(ctx, "initialize conversation store: %v", err)
+		panic(err)
+	}
+	if conversationDB != nil {
+		defer func() {
+			if err := conversationDB.Close(); err != nil {
+				g.Log().Errorf(ctx, "close conversation database: %v", err)
+			}
+		}()
+	}
 	s := g.Server()
-	chatController := chat.NewV1(agentRuntime)
+	chatController := chat.NewV1WithStore(agentRuntime, conversationStore)
 	if closable, ok := chatController.(interface{ Close(context.Context) error }); ok {
 		defer func() {
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -191,7 +191,7 @@ These phases are not silently dropped when JWT is implemented:
 - [x] Add `SessionKey{TenantID, UserID, ConversationID}` and bind it to the authenticated JWT principal.
 - [x] Add an in-process `ConversationStore` and same-session coordinator as a testable adapter.
 - [x] Add PostgreSQL `conversations` and `conversation_messages` tables with `(tenant_id, user_id, conversation_id)` ownership. Migration: `deploy/postgres/conversation.sql`.
-- [x] Implement `ConversationStore` with transactional versioned append; append the user/assistant pair atomically. Adapter: `conversation.NewSQLStore`; production wiring remains deployment-configured.
+- [x] Implement `ConversationStore` with transactional versioned append; append the user/assistant pair atomically. Adapter: `conversation.NewSQLStore`; startup selects memory or PostgreSQL from `conversation.backend`.
 - [ ] Add Redis hot-cache reads with PostgreSQL as the source of truth; invalidate or update cache only after a successful database commit.
 - [x] Add optional `idempotency_key` fields to chat requests and reject duplicate or conflicting turn commits in memory and PostgreSQL stores. External-store wiring remains deployment-configured.
 - [x] Add tenant filter enforcement to Milvus retrieval and tenant metadata during knowledge indexing.

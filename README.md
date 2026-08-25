@@ -31,7 +31,7 @@ SuperBizAgent 是一个面向告警处理和 AI 运维场景的 Go 智能助手�
 
 当前会话历史仍使用进程内内存。PostgreSQL/Redis 共享会话、租户过滤、同会话串行和运行时资源复用已记录在 [多用户改造路线图](docs/superpowers/plans/2026-08-25-local-jwt-auth-and-multitenant-roadmap.md) 中，尚未全部实现。
 
-PostgreSQL 会话存储适配器已经提供，但默认不会自动连接外部数据库。部署时执行 `deploy/postgres/conversation.sql`，创建带租户/用户/会话复合主键的表，再通过 `conversation.NewSQLStore(*sql.DB, maxMessages)` 注入 Controller；当前启动流程仍使用内存存储，避免缺少数据库配置时无法启动。聊天请求可携带 `idempotency_key`，用于网络重试时避免重复提交同一轮对话。
+PostgreSQL 会话存储已支持配置化启动。默认 `conversation.backend: memory`；生产部署可设置 `conversation.backend: postgres` 和 `conversation.postgres.dsn`，启动时会连接并 Ping 数据库，失败则拒绝启动。执行 `deploy/postgres/conversation.sql` 创建带租户/用户/会话复合主键的表。聊天请求可携带 `idempotency_key`，用于网络重试时避免重复提交同一轮对话。
 
 ## 环境要求
 
