@@ -221,7 +221,7 @@ These phases are not silently dropped when JWT is implemented:
 - [ ] Make MCP clients use request context, support cancellation, and apply per-tool timeouts; do not initialize MCP clients with `context.Background()` in request paths.
 - [ ] Add an `IntentRouter` with explicit routes for direct chat, RAG, logs/MCP, Prometheus, controlled database queries, and plan/execute tasks.
 - [ ] Add a `ModelRouter` for quick/deep/fallback models with per-tenant policy, token budget, timeout, and cost metadata.
-- [ ] Treat Graph construction errors as fatal errors; stop ignoring `AddLambdaNode`, `AddRetrieverNode`, and `AddEdge` return values.
+- [x] Treat Graph construction errors as fatal errors; stop ignoring `AddLambdaNode`, `AddRetrieverNode`, and `AddEdge` return values.
 - [ ] Add tests for tool allow/deny decisions, model route selection, Graph construction failures, and runtime reuse under parallel requests.
 
 ### Phase 4: High-Concurrency and Streaming Governance
