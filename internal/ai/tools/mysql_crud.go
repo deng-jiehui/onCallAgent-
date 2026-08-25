@@ -1,65 +1,101 @@
 package tools
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
-	"os"
+	"strings"
+	"time"
 
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"
+	"github.com/gogf/gf/v2/frame/g"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
+var (
+	ErrMysqlDSNRequired = errors.New("mysql data source is not configured")
+	ErrMysqlWriteDenied = errors.New("mysql tool is read-only")
+	ErrMysqlSQLInvalid  = errors.New("mysql SQL must be one read-only statement")
+)
+
 type MysqlCrudInput struct {
-	DSN         string `json:"dsn" jsonschema:"description=The Data Source Name for connecting to the MySQL database, including username, password, host, port, and database name"`
-	SQL         string `json:"sql" jsonschema:"description=The SQL query to execute against the MySQL database"`
-	OperateType string `json:"operate_type" jsonschema:"description=The type of SQL operation to perform: query, insert, update, or delete"`
+	SQL string `json:"sql" jsonschema:"description=Read-only SQL query. Only SELECT, SHOW, DESCRIBE, or EXPLAIN statements are allowed"`
 }
 
-func NewMysqlCrudTool() tool.InvokableTool {
-	t, err := utils.InferOptionableTool(
-		"mysql_crud",
-		"Execute SQL queries against the MySQL database and return results in JSON format. Use this tool when you need to query, insert, update or delete data from the database. The results will be formatted as JSON for easy parsing.",
-		func(ctx context.Context, input *MysqlCrudInput, opts ...tool.Option) (output string, err error) {
-			// 1. 建立数据库连接
-			db, err := gorm.Open(mysql.Open(input.DSN), &gorm.Config{})
-			if err != nil {
-				log.Fatal(err)
-			}
+type MysqlCrudConfig struct {
+	DSN     string
+	Timeout time.Duration
+}
 
-			scanner := bufio.NewScanner(os.Stdin)
-			fmt.Print("\n请确定是否执行本sql(y/n): ", input.SQL)
-			scanner.Scan()
-			fmt.Println()
-			nInput := scanner.Text()
-			if nInput != "y" {
-				return "用户取消执行sql", nil
-			}
-
-			// 2. 执行 SQL 查询
-			err = db.Exec(input.SQL).Error
-			if err != nil {
-				log.Fatal(err)
-			}
-			if input.OperateType == "query" {
-				// 3. 获取查询结果
-				var results []interface{}
-				err = db.Raw(input.SQL).Scan(&results).Error
-				if err != nil {
-					log.Fatal(err)
-				}
-				// 4. 将结果格式化为 JSON
-				resBytes, err := json.Marshal(results)
-				return string(resBytes), err
-			}
-			return "", nil
-		})
-	if err != nil {
-		log.Fatal(err)
+func LoadMysqlCrudConfig(ctx context.Context) MysqlCrudConfig {
+	cfg := MysqlCrudConfig{Timeout: 5 * time.Second}
+	if value, err := g.Cfg().Get(ctx, "mysql_data_source.dsn"); err == nil && !value.IsNil() {
+		cfg.DSN = strings.TrimSpace(value.String())
 	}
-	return t
+	if value, err := g.Cfg().Get(ctx, "mysql_data_source.timeout"); err == nil && !value.IsNil() {
+		if timeout, parseErr := time.ParseDuration(value.String()); parseErr == nil && timeout > 0 {
+			cfg.Timeout = timeout
+		}
+	}
+	return cfg
+}
+
+func NewMysqlCrudTool() (tool.InvokableTool, error) {
+	return NewMysqlCrudToolWithConfig(LoadMysqlCrudConfig(context.Background()))
+}
+
+func NewMysqlCrudToolWithConfig(cfg MysqlCrudConfig) (tool.InvokableTool, error) {
+	if cfg.Timeout <= 0 {
+		cfg.Timeout = 5 * time.Second
+	}
+	var db *gorm.DB
+	if strings.TrimSpace(cfg.DSN) != "" {
+		var err error
+		db, err = gorm.Open(mysql.Open(cfg.DSN), &gorm.Config{})
+		if err != nil {
+			return nil, fmt.Errorf("open mysql data source: %w", err)
+		}
+	}
+	return utils.InferOptionableTool(
+		"mysql_crud",
+		"Query a server-configured MySQL data source. The tool is read-only and accepts one SELECT, SHOW, DESCRIBE, or EXPLAIN statement.",
+		func(ctx context.Context, input *MysqlCrudInput, opts ...tool.Option) (string, error) {
+			if input == nil {
+				return "", errors.New("mysql input is required")
+			}
+			if err := validateReadOnlySQL(input.SQL); err != nil {
+				return "", err
+			}
+			if db == nil {
+				return "", ErrMysqlDSNRequired
+			}
+			queryCtx, cancel := context.WithTimeout(ctx, cfg.Timeout)
+			defer cancel()
+			var results []map[string]any
+			if err := db.WithContext(queryCtx).Raw(input.SQL).Scan(&results).Error; err != nil {
+				return "", err
+			}
+			payload, err := json.Marshal(results)
+			return string(payload), err
+		})
+}
+
+func validateReadOnlySQL(query string) error {
+	query = strings.TrimSpace(query)
+	if query == "" || strings.Contains(query, ";") {
+		return ErrMysqlSQLInvalid
+	}
+	fields := strings.Fields(strings.ToUpper(query))
+	if len(fields) == 0 {
+		return ErrMysqlSQLInvalid
+	}
+	switch fields[0] {
+	case "SELECT", "SHOW", "DESCRIBE", "DESC", "EXPLAIN":
+		return nil
+	default:
+		return ErrMysqlWriteDenied
+	}
 }

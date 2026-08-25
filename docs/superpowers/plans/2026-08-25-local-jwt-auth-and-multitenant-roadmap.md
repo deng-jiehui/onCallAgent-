@@ -219,13 +219,13 @@ These phases are not silently dropped when JWT is implemented:
 - [ ] Add startup health checks and graceful shutdown for Milvus, MCP, and model clients.
 - [ ] Check SDK concurrency safety with parallel integration tests; keep request-specific state in local variables/context only.
 - [ ] Add a `ToolRegistry` that resolves tools from `Principal`, tenant policy, and request intent; never expose every tool to every user.
-- [ ] Replace `mysql_crud` model-supplied DSN with named, server-side data sources and tenant-scoped credentials.
-- [ ] Make database access read-only by default, validate SQL operations, remove terminal confirmation, replace `log.Fatal` with returned errors, and apply query/connection timeouts.
+- [x] Replace `mysql_crud` model-supplied DSN with a server-side configured data source. Tenant-scoped credential mapping remains a deployment policy step.
+- [x] Make database access read-only by default, validate SQL operations, remove terminal confirmation, replace `log.Fatal` with returned errors, and apply query timeouts.
 - [ ] Make MCP clients use request context, support cancellation, and apply per-tool timeouts; do not initialize MCP clients with `context.Background()` in request paths.
 - [ ] Add an `IntentRouter` with explicit routes for direct chat, RAG, logs/MCP, Prometheus, controlled database queries, and plan/execute tasks.
 - [ ] Add a `ModelRouter` for quick/deep/fallback models with per-tenant policy, token budget, timeout, and cost metadata.
 - [x] Treat Graph construction errors as fatal errors; stop ignoring `AddLambdaNode`, `AddRetrieverNode`, and `AddEdge` return values.
-- [ ] Add tests for tool allow/deny decisions, model route selection, Graph construction failures, and runtime reuse under parallel requests.
+- [x] Add tests for the database tool's read-only and server-configured-DSN policy. Tool allow/deny registry, model route selection, and broader runtime parallel tests remain pending.
 
 ### Phase 4: High-Concurrency and Streaming Governance
 

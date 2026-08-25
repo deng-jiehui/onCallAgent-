@@ -33,6 +33,8 @@ SuperBizAgent 是一个面向告警处理和 AI 运维场景的 Go 智能助手�
 
 PostgreSQL 会话存储已支持配置化启动。默认 `conversation.backend: memory`；生产部署可设置 `conversation.backend: postgres` 和 `conversation.postgres.dsn`，启动时会连接并 Ping 数据库，失败则拒绝启动。执行 `deploy/postgres/conversation.sql` 创建带租户/用户/会话复合主键的表。聊天请求可携带 `idempotency_key`，用于网络重试时避免重复提交同一轮对话。
 
+MySQL 工具使用服务端 `mysql_data_source.dsn` 配置，模型不能传入 DSN；当前默认只允许单条只读查询（`SELECT`、`SHOW`、`DESCRIBE`、`EXPLAIN`），并应用查询超时。生产环境仍需为每个租户配置独立的数据源和凭据映射。
+
 ## 环境要求
 
 - Go 1.24.4 或兼容的 Go 1.24 工具链

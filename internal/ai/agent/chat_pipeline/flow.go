@@ -3,6 +3,7 @@ package chat_pipeline
 import (
 	"SuperBizAgent/internal/ai/tools"
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/cloudwego/eino/compose"
@@ -29,7 +30,11 @@ func newReactAgentLambda(ctx context.Context) (lba *compose.Lambda, err error) {
 	}
 	config.ToolsConfig.Tools = mcpTool
 	config.ToolsConfig.Tools = append(config.ToolsConfig.Tools, tools.NewPrometheusAlertsQueryTool())
-	config.ToolsConfig.Tools = append(config.ToolsConfig.Tools, tools.NewMysqlCrudTool())
+	mysqlTool, err := tools.NewMysqlCrudTool()
+	if err != nil {
+		return nil, fmt.Errorf("initialize mysql tool: %w", err)
+	}
+	config.ToolsConfig.Tools = append(config.ToolsConfig.Tools, mysqlTool)
 	config.ToolsConfig.Tools = append(config.ToolsConfig.Tools, tools.NewGetCurrentTimeTool())
 	config.ToolsConfig.Tools = append(config.ToolsConfig.Tools, tools.NewQueryInternalDocsTool())
 
