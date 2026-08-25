@@ -47,6 +47,8 @@ go test -tags=integration ./internal/conversation -run "Test(PostgresConversatio
 
 MySQL 工具使用服务端 `mysql_data_source.dsn` 配置，模型不能传入 DSN；当前默认只允许单条只读查询（`SELECT`、`SHOW`、`DESCRIBE`、`EXPLAIN`），并应用查询超时。生产环境仍需为每个租户配置独立的数据源和凭据映射。
 
+Chat Graph 中的 MCP、Prometheus 和 MySQL 工具经过 `ToolRegistry` 执行期授权；调用必须携带认证 principal，受限工具要求 `operator` 或 `admin` 角色。
+
 ## 环境要求
 
 - Go 1.24.4 或兼容的 Go 1.24 工具链
