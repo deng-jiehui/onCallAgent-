@@ -51,6 +51,8 @@ Chat Graph 中的 MCP、Prometheus 和 MySQL 工具经过 `ToolRegistry` 执行�
 
 RAG 默认检索 `top_k` 为 5，可通过 `retriever.top_k` 和 `retriever.distance_threshold` 配置；距离阈值为 0 时不启用过滤。MCP client 由 Chat Runtime 持有，并在服务关闭时释放。
 
+IntentRouter 会让问候、时间查询和简单追问跳过 Milvus；未知问题默认仍执行检索，避免因规则过窄漏掉知识请求。
+
 ## 环境要求
 
 - Go 1.24.4 或兼容的 Go 1.24 工具链

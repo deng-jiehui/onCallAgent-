@@ -204,7 +204,7 @@ These phases are not silently dropped when JWT is implemented:
 - [x] Choose the current isolation strategy as a mandatory Milvus JSON scalar filter; reject queries that omit the tenant scope. Partition-based isolation remains an optional deployment optimization.
 - [x] Raise the default retrieval `topK` from `1` to configured `5`, and add a configurable distance threshold.
 - [x] Preserve retrieval rank and score in metadata and add tests for empty/low-quality recall.
-- [ ] Add an intent-aware retrieval decision so greetings, time queries, and pure follow-ups can skip Milvus when no knowledge lookup is needed.
+- [x] Add an intent-aware retrieval decision so greetings, time queries, and simple follow-ups skip Milvus when no knowledge lookup is needed; unknown requests continue to retrieve by default.
 - [ ] Add evaluation cases for cross-tenant retrieval, no-recall behavior, and multi-document answers.
 
 ### Phase 3: Runtime Reuse and Tool Policy
@@ -223,7 +223,7 @@ These phases are not silently dropped when JWT is implemented:
 - [x] Replace `mysql_crud` model-supplied DSN with a server-side configured data source. Tenant-scoped credential mapping remains a deployment policy step.
 - [x] Make database access read-only by default, validate SQL operations, remove terminal confirmation, replace `log.Fatal` with returned errors, and apply query timeouts.
 - [ ] Make MCP clients use request context, support cancellation, and apply per-tool timeouts; initialization uses the build context with a bounded handshake, failed clients close, and successful clients are Runtime-owned. Per-tool call timeout policy remains pending.
-- [ ] Add an `IntentRouter` with explicit routes for direct chat, RAG, logs/MCP, Prometheus, controlled database queries, and plan/execute tasks.
+- [x] Add the first IntentRouter boundary for direct non-knowledge chat versus RAG retrieval. Explicit tool-specific routes for logs/MCP, Prometheus, database, and plan/execute remain pending.
 - [ ] Add a `ModelRouter` for quick/deep/fallback models with per-tenant policy, token budget, timeout, and cost metadata.
 - [x] Treat Graph construction errors as fatal errors; stop ignoring `AddLambdaNode`, `AddRetrieverNode`, and `AddEdge` return values.
 - [x] Add tests for database read-only/server-configured-DSN policy and ToolRegistry allow/deny decisions. Model route selection and broader runtime parallel tests remain pending.
