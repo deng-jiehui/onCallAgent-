@@ -24,6 +24,20 @@ func TestNewV1UsesInjectedRuntime(t *testing.T) {
 	}
 }
 
+func TestNewV1WithStoreUsesInjectedConversationStore(t *testing.T) {
+	store := conversation.NewMemoryStore(8)
+	controller, ok := NewV1WithStore(&chat_pipeline.Runtime{}, store).(*ControllerV1)
+	if !ok {
+		t.Fatal("NewV1WithStore should return a ControllerV1")
+	}
+	if controller.conversations != store {
+		t.Fatal("controller must retain the injected conversation store")
+	}
+	if err := controller.Close(context.Background()); err != nil {
+		t.Fatalf("close controller: %v", err)
+	}
+}
+
 func TestNewV1InitializesTurnLoopRegistry(t *testing.T) {
 	controller, ok := NewV1(&chat_pipeline.Runtime{}).(*ControllerV1)
 	if !ok {

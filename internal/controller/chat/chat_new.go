@@ -39,9 +39,18 @@ func appendTurn(ctx context.Context, store conversation.ConversationStore, key c
 }
 
 func NewV1(runtime *chat_pipeline.Runtime) chat.IChatV1 {
+	return NewV1WithStore(runtime, nil)
+}
+
+// NewV1WithStore allows deployment wiring to select a durable conversation
+// store. A nil store retains the development-friendly memory implementation.
+func NewV1WithStore(runtime *chat_pipeline.Runtime, store conversation.ConversationStore) chat.IChatV1 {
+	if store == nil {
+		store = conversation.NewMemoryStore(6)
+	}
 	return &ControllerV1{
 		service:       sse.New(),
-		conversations: conversation.NewMemoryStore(6),
+		conversations: store,
 		coordinator:   conversation.NewCoordinator(),
 		loops:         conversation.NewTurnLoopRegistryWithIdle(128, 30*time.Minute),
 		limiter:       conversation.NewRunLimiter(100),
