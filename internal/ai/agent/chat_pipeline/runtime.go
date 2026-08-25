@@ -3,6 +3,7 @@ package chat_pipeline
 import (
 	"context"
 
+	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
 )
@@ -10,7 +11,8 @@ import (
 // Runtime owns the process-wide, request-independent chat agent graph.
 // Request identity and conversation state must remain in the call context and input.
 type Runtime struct {
-	Agent compose.Runnable[*UserMessage, *schema.Message]
+	Agent    compose.Runnable[*UserMessage, *schema.Message]
+	ADKAgent adk.Agent
 }
 
 // NewRuntime builds the chat graph and its dependencies once during startup.
@@ -19,5 +21,9 @@ func NewRuntime(ctx context.Context) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Runtime{Agent: agent}, nil
+	adkAgent, err := NewADKAgent(agent, "ChatAgent", "Multi-user incident assistance chat agent")
+	if err != nil {
+		return nil, err
+	}
+	return &Runtime{Agent: agent, ADKAgent: adkAgent}, nil
 }
