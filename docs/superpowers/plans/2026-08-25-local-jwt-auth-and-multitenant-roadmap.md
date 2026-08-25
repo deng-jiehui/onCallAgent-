@@ -213,6 +213,7 @@ These phases are not silently dropped when JWT is implemented:
 - [x] Upgrade the core Eino dependency to `v0.9.15` while retaining the existing `schema.Message`/`compose.Runnable` path; full tests and build pass.
 - [x] Add a tested `compose.Runnable` to Eino `adk.Agent` protocol adapter without changing the HTTP controller path.
 - [x] Add a tested conversation-scoped `TurnLoopSession` wrapper with Eino `Push`, `Stop`, and same/different-session concurrency guarantees.
+- [x] Add a bounded, tenant-aware `TurnLoopRegistry` that lazily reuses one session loop per `SessionKey` and stops all loops during shutdown.
 - [ ] Migrate long-lived conversations to one Eino `adk.TurnLoop` per conversation for queued turns, input merging, cancellation, and checkpoint/resume instead of implementing another turn loop.
 - [x] Add the repository skill `.agents/skills/eino-architecture-engineer` with official v0.9 compatibility, TurnLoop, tool policy, cancellation, and verification guidance.
 - [ ] Add startup health checks and graceful shutdown for Milvus, MCP, and model clients.
