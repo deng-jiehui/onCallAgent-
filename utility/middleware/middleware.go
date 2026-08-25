@@ -1,6 +1,10 @@
 package middleware
 
-import "github.com/gogf/gf/v2/net/ghttp"
+import (
+	"strings"
+
+	"github.com/gogf/gf/v2/net/ghttp"
+)
 
 // CORSMiddleware 处理CORS跨域请求
 func CORSMiddleware(r *ghttp.Request) {
@@ -10,6 +14,9 @@ func CORSMiddleware(r *ghttp.Request) {
 
 func ResponseMiddleware(r *ghttp.Request) {
 	r.Middleware.Next()
+	if strings.HasPrefix(strings.ToLower(r.Response.Header().Get("Content-Type")), "text/event-stream") {
+		return
+	}
 
 	var (
 		msg string

@@ -231,21 +231,20 @@ These phases are not silently dropped when JWT is implemented:
 
 - [ ] Add instance-level Agent semaphores and cluster-level Redis tenant quotas.
 - [ ] Add Redis-backed conversation locks/queues with lease, renewal, bounded wait, and cancellation behavior.
-- [ ] Refactor SSE to a single writer with a bounded queue; stop Agent/model/tool work when the client disconnects.
-- [ ] Ensure incomplete streams are not committed as assistant history; commit before sending the terminal `done` event.
-- [ ] Fix the generic response middleware so it cannot append JSON to an SSE response.
+- [x] Refactor SSE to a single writer with a bounded queue; stop Agent/model/tool work when the client disconnects. The current queue is instance-local and bounded by event count; byte-based limits remain a tuning item.
+- [x] Ensure incomplete streams are not committed as assistant history; commit before sending the terminal `done` event.
+- [x] Fix the generic response middleware so it cannot append JSON to an SSE response.
 - [ ] Add load tests for 100+ independent conversations, slow clients, downstream timeouts, and retry/idempotency behavior.
 - [ ] Run `go test -race ./...` in CI or a development image that provides a C compiler; the current Windows host lacks `gcc`.
 
 #### Eino TurnLoop Decision
 
-The current dependency is Eino `v0.6.0`, which has no `TurnLoop` API. Eino's
-`adk.TurnLoop` appears in the `v0.9` line and provides a push-based, per-turn
-runtime with input buffering, preemption, and checkpoint/resume. It should be
-adopted only after an explicit dependency-compatibility check. The current
-`conversation.Coordinator` remains responsible for short-lived HTTP request
-serialization, while the startup `Runtime` owns reusable model/retriever/tool
-dependencies. Neither should be replaced by a hand-written global loop.
+The dependency is Eino `v0.9.15`. Its `adk.TurnLoop` provides a push-based,
+per-turn runtime with input buffering, preemption, and checkpoint/resume. The
+HTTP chat path now uses one TurnLoop per authenticated `SessionKey`; the
+in-process registry is still only a runtime cache, while durable checkpoint and
+transcript storage remain a later phase. The startup `Runtime` owns reusable
+model/retriever/tool dependencies. No global loop is shared across users.
 
 ### Phase 5: Production Identity and Operations
 

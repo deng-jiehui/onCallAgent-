@@ -3,6 +3,7 @@ package chat
 import (
 	"SuperBizAgent/api/chat/v1"
 	"SuperBizAgent/internal/conversation"
+	"SuperBizAgent/internal/logic/sse"
 	"SuperBizAgent/internal/observability"
 	"context"
 	"errors"
@@ -35,10 +36,22 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 	}
 	var fullResponse strings.Builder
 	done := make(chan error, 1)
+	finishClient := func() {
+		client.Finish()
+	}
+	send := func(eventType, data string) error {
+		if client.SendToClient(eventType, data) {
+			return nil
+		}
+		return sse.ErrUnavailable
+	}
 	emit := func(event conversation.TurnEvent) error {
 		if event.Message != nil {
 			fullResponse.WriteString(event.Message.Content)
-			client.SendToClient("message", event.Message.Content)
+			if sendErr := send("message", event.Message.Content); sendErr != nil {
+				done <- sendErr
+				return sendErr
+			}
 		}
 		if !event.Done {
 			return nil
@@ -56,24 +69,31 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 			done <- appendErr
 			return nil
 		}
-		client.SendToClient("done", "Stream completed")
+		if sendErr := send("done", "Stream completed"); sendErr != nil {
+			done <- sendErr
+			return sendErr
+		}
 		done <- nil
 		return nil
 	}
 	if err := session.PushBuild(ctx, func(runCtx context.Context) (*adk.AgentInput, error) {
 		return c.buildTurnInput(runCtx, key, msg)
 	}, emit); err != nil {
-		client.SendToClient("error", err.Error())
+		_ = send("error", err.Error())
+		finishClient()
 		return nil, err
 	}
 	select {
 	case err := <-done:
 		if err != nil {
-			client.SendToClient("error", err.Error())
+			_ = send("error", err.Error())
+			finishClient()
 			return nil, err
 		}
+		finishClient()
 		return &v1.ChatStreamRes{}, nil
 	case <-ctx.Done():
+		finishClient()
 		return nil, ctx.Err()
 	}
 }
