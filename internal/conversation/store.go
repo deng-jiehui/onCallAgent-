@@ -2,17 +2,22 @@ package conversation
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/cloudwego/eino/schema"
 )
 
 var (
-	ErrInvalidSessionKey = errors.New("tenant, user, and conversation IDs are required")
-	ErrInvalidMessage    = errors.New("user and assistant messages are required")
-	ErrVersionConflict   = errors.New("conversation version conflict")
+	ErrInvalidSessionKey   = errors.New("tenant, user, and conversation IDs are required")
+	ErrInvalidMessage      = errors.New("user and assistant messages are required")
+	ErrVersionConflict     = errors.New("conversation version conflict")
+	ErrIdempotencyConflict = errors.New("conversation idempotency key was reused with different content")
 )
 
 type SessionKey struct {
@@ -38,15 +43,28 @@ type ConversationStore interface {
 	AppendIfVersion(ctx context.Context, key SessionKey, expectedVersion int64, userMessage, assistantMessage *schema.Message) (bool, error)
 }
 
+// IdempotentConversationStore atomically records a turn and its retry key.
+// committed=false means the same request key was already committed.
+type IdempotentConversationStore interface {
+	ConversationStore
+	AppendIdempotent(ctx context.Context, key SessionKey, idempotencyKey string, userMessage, assistantMessage *schema.Message) (committed bool, err error)
+}
+
 type MemoryStore struct {
 	maxMessages int
 	entries     sync.Map // map[SessionKey]*memoryEntry
+	idempotency sync.Map // map[SessionKey]*memoryIdempotency
 }
 
 type memoryEntry struct {
 	mu       sync.RWMutex
 	messages []*schema.Message
 	version  int64
+}
+
+type memoryIdempotency struct {
+	mu     sync.Mutex
+	values map[string]string
 }
 
 func NewMemoryStore(maxMessages int) *MemoryStore {
@@ -79,6 +97,57 @@ func (s *MemoryStore) Append(ctx context.Context, key SessionKey, userMessage, a
 
 func (s *MemoryStore) AppendIfVersion(ctx context.Context, key SessionKey, expectedVersion int64, userMessage, assistantMessage *schema.Message) (bool, error) {
 	return s.append(ctx, key, expectedVersion, userMessage, assistantMessage, true)
+}
+
+func (s *MemoryStore) AppendIdempotent(ctx context.Context, key SessionKey, idempotencyKey string, userMessage, assistantMessage *schema.Message) (bool, error) {
+	if err := contextErr(ctx); err != nil {
+		return false, err
+	}
+	if err := key.Validate(); err != nil {
+		return false, err
+	}
+	if strings.TrimSpace(idempotencyKey) == "" {
+		return false, errors.New("idempotency key is required")
+	}
+	if userMessage == nil || assistantMessage == nil {
+		return false, ErrInvalidMessage
+	}
+	hash, err := messagePairHash(userMessage, assistantMessage)
+	if err != nil {
+		return false, err
+	}
+	marker := s.idempotencyEntry(key)
+	marker.mu.Lock()
+	defer marker.mu.Unlock()
+	if previous, ok := marker.values[idempotencyKey]; ok {
+		if previous != hash {
+			return false, ErrIdempotencyConflict
+		}
+		return false, nil
+	}
+	if err := s.Append(ctx, key, userMessage, assistantMessage); err != nil {
+		return false, err
+	}
+	marker.values[idempotencyKey] = hash
+	return true, nil
+}
+
+func (s *MemoryStore) idempotencyEntry(key SessionKey) *memoryIdempotency {
+	if entry, ok := s.idempotency.Load(key); ok {
+		return entry.(*memoryIdempotency)
+	}
+	entry := &memoryIdempotency{values: make(map[string]string)}
+	actual, _ := s.idempotency.LoadOrStore(key, entry)
+	return actual.(*memoryIdempotency)
+}
+
+func messagePairHash(userMessage, assistantMessage *schema.Message) (string, error) {
+	payload, err := json.Marshal([]*schema.Message{userMessage, assistantMessage})
+	if err != nil {
+		return "", fmt.Errorf("encode idempotency payload: %w", err)
+	}
+	sum := sha256.Sum256(payload)
+	return hex.EncodeToString(sum[:]), nil
 }
 
 func (s *MemoryStore) append(ctx context.Context, key SessionKey, expectedVersion int64, userMessage, assistantMessage *schema.Message, checkVersion bool) (bool, error) {

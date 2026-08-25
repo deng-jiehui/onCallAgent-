@@ -5,9 +5,10 @@ import (
 )
 
 type ChatReq struct {
-	g.Meta   `path:"/chat" method:"post" summary:"对话"`
-	Id       string
-	Question string
+	g.Meta         `path:"/chat" method:"post" summary:"对话"`
+	Id             string
+	Question       string
+	IdempotencyKey string `json:"idempotency_key"`
 }
 
 type ChatRes struct {
@@ -15,9 +16,10 @@ type ChatRes struct {
 }
 
 type ChatStreamReq struct {
-	g.Meta   `path:"/chat_stream" method:"post" summary:"流式对话"`
-	Id       string
-	Question string
+	g.Meta         `path:"/chat_stream" method:"post" summary:"流式对话"`
+	Id             string
+	Question       string
+	IdempotencyKey string `json:"idempotency_key"`
 }
 
 type ChatStreamRes struct {

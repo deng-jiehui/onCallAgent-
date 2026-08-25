@@ -19,11 +19,23 @@ import (
 
 type ControllerV1 struct {
 	service       *sse.Service
-	conversations *conversation.MemoryStore
+	conversations conversation.ConversationStore
 	coordinator   *conversation.Coordinator
 	loops         *conversation.TurnLoopRegistry
 	limiter       *conversation.RunLimiter
 	runtime       *chat_pipeline.Runtime
+}
+
+func appendTurn(ctx context.Context, store conversation.ConversationStore, key conversation.SessionKey, idempotencyKey string, userMessage, assistantMessage *schema.Message) error {
+	if idempotencyKey == "" {
+		return store.Append(ctx, key, userMessage, assistantMessage)
+	}
+	idempotent, ok := store.(conversation.IdempotentConversationStore)
+	if !ok {
+		return errors.New("conversation store does not support idempotency keys")
+	}
+	_, err := idempotent.AppendIdempotent(ctx, key, idempotencyKey, userMessage, assistantMessage)
+	return err
 }
 
 func NewV1(runtime *chat_pipeline.Runtime) chat.IChatV1 {

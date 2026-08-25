@@ -20,6 +20,7 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 	defer func() { finish(err) }()
 	id := req.Id
 	msg := req.Question
+	idempotencyKey := req.IdempotencyKey
 	key, err := sessionKey(ctx, id)
 	if err != nil {
 		return nil, err
@@ -84,7 +85,7 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 			done <- errors.New("chat agent returned empty stream")
 			return nil
 		}
-		if appendErr := c.conversations.Append(ctx, key, schema.UserMessage(msg), schema.AssistantMessage(completeResponse, nil)); appendErr != nil {
+		if appendErr := appendTurn(ctx, c.conversations, key, idempotencyKey, schema.UserMessage(msg), schema.AssistantMessage(completeResponse, nil)); appendErr != nil {
 			release()
 			done <- appendErr
 			return nil

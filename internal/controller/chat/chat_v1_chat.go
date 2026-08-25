@@ -17,6 +17,7 @@ func (c *ControllerV1) Chat(ctx context.Context, req *v1.ChatReq) (res *v1.ChatR
 	defer func() { finish(err) }()
 	id := req.Id
 	msg := req.Question
+	idempotencyKey := req.IdempotencyKey
 	key, err := sessionKey(ctx, id)
 	if err != nil {
 		return nil, err
@@ -48,7 +49,7 @@ func (c *ControllerV1) Chat(ctx context.Context, req *v1.ChatReq) (res *v1.ChatR
 		if event.Done && event.Err == nil {
 			if answer == "" {
 				event.Err = errors.New("chat agent returned empty response")
-			} else if appendErr := c.conversations.Append(ctx, key, schema.UserMessage(msg), schema.AssistantMessage(answer, nil)); appendErr != nil {
+			} else if appendErr := appendTurn(ctx, c.conversations, key, idempotencyKey, schema.UserMessage(msg), schema.AssistantMessage(answer, nil)); appendErr != nil {
 				event.Err = appendErr
 			}
 		}

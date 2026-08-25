@@ -105,6 +105,23 @@ func TestMemoryStoreAppendIfVersionPreventsOverwrite(t *testing.T) {
 	}
 }
 
+func TestMemoryStoreIdempotencyPreventsDuplicateTurns(t *testing.T) {
+	store := NewMemoryStore(6)
+	key := SessionKey{TenantID: "tenant-a", UserID: "user-a", ConversationID: "conv"}
+	committed, err := store.AppendIdempotent(context.Background(), key, "request-1", schema.UserMessage("q"), schema.AssistantMessage("a", nil))
+	if err != nil || !committed {
+		t.Fatalf("first idempotent append committed=%v err=%v", committed, err)
+	}
+	committed, err = store.AppendIdempotent(context.Background(), key, "request-1", schema.UserMessage("q"), schema.AssistantMessage("a", nil))
+	if err != nil || committed {
+		t.Fatalf("duplicate idempotent append committed=%v err=%v", committed, err)
+	}
+	_, _, _ = store.Load(context.Background(), key)
+	if _, err := store.AppendIdempotent(context.Background(), key, "request-1", schema.UserMessage("different"), schema.AssistantMessage("a", nil)); err != ErrIdempotencyConflict {
+		t.Fatalf("conflicting idempotency key error=%v", err)
+	}
+}
+
 func TestCoordinatorSerializesSameSessionButAllowsDifferentSessions(t *testing.T) {
 	coordinator := NewCoordinator()
 	key := SessionKey{TenantID: "tenant-a", UserID: "user-a", ConversationID: "same"}
