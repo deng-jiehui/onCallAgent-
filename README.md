@@ -37,6 +37,14 @@ PostgreSQL 模式可选配置 `conversation.redis.url` 和 `conversation.redis.c
 
 配置 Redis URL 后，Controller 还会为每个完整会话键建立分布式租约锁，跨实例请求会等待同一会话释放；租约会自动续期，客户端取消或续租失败会取消当前 turn。
 
+真实 PostgreSQL/Redis 集成测试使用 `integration` build tag。先准备服务，再执行：
+
+```powershell
+go test -tags=integration ./internal/conversation -run "Test(PostgresConversationStoreIntegration|RedisCacheAndConversationLockIntegration)" -count=1 -v
+```
+
+可用 `SUPERBIZ_IT_POSTGRES_DSN` 和 `SUPERBIZ_IT_REDIS_ADDR` 覆盖默认连接地址。
+
 MySQL 工具使用服务端 `mysql_data_source.dsn` 配置，模型不能传入 DSN；当前默认只允许单条只读查询（`SELECT`、`SHOW`、`DESCRIBE`、`EXPLAIN`），并应用查询超时。生产环境仍需为每个租户配置独立的数据源和凭据映射。
 
 ## 环境要求

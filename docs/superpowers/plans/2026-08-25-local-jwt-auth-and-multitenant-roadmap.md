@@ -193,6 +193,7 @@ These phases are not silently dropped when JWT is implemented:
 - [x] Add PostgreSQL `conversations` and `conversation_messages` tables with `(tenant_id, user_id, conversation_id)` ownership. Migration: `deploy/postgres/conversation.sql`.
 - [x] Implement `ConversationStore` with transactional versioned append; append the user/assistant pair atomically. Adapter: `conversation.NewSQLStore`; startup selects memory or PostgreSQL from `conversation.backend`.
 - [x] Add Redis hot-cache reads with PostgreSQL as the source of truth; invalidate cache only after a successful database commit. Redis failures fall back to PostgreSQL and do not hide a committed write.
+- [x] Add real integration tests for PostgreSQL transactions, tenant-scoped conversation history, Redis cache invalidation, and Redis lease locking (`go test -tags=integration ./internal/conversation`).
 - [x] Add optional `idempotency_key` fields to chat requests and reject duplicate or conflicting turn commits in memory and PostgreSQL stores. External-store wiring remains deployment-configured.
 - [x] Add tenant filter enforcement to Milvus retrieval and tenant metadata during knowledge indexing.
 - [ ] Add tests proving identical document IDs, conversation IDs, and user IDs across tenants never cross boundaries.
