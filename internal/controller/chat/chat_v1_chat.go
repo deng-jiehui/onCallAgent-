@@ -6,6 +6,7 @@ import (
 	"SuperBizAgent/internal/observability"
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/schema"
@@ -26,6 +27,19 @@ func (c *ControllerV1) Chat(ctx context.Context, req *v1.ChatReq) (res *v1.ChatR
 		return nil, err
 	}
 	events := make(chan conversation.TurnEvent, 4)
+	if c.limiter != nil {
+		if err := c.limiter.Acquire(ctx); err != nil {
+			return nil, err
+		}
+	}
+	var releaseOnce sync.Once
+	release := func() {
+		releaseOnce.Do(func() {
+			if c.limiter != nil {
+				c.limiter.Release()
+			}
+		})
+	}
 	var answer string
 	emit := func(event conversation.TurnEvent) error {
 		if event.Message != nil {
@@ -38,12 +52,16 @@ func (c *ControllerV1) Chat(ctx context.Context, req *v1.ChatReq) (res *v1.ChatR
 				event.Err = appendErr
 			}
 		}
+		if event.Done || event.Err != nil {
+			release()
+		}
 		events <- event
 		return nil
 	}
 	if err := session.PushBuild(ctx, func(runCtx context.Context) (*adk.AgentInput, error) {
 		return c.buildTurnInput(runCtx, key, msg)
 	}, emit); err != nil {
+		release()
 		return nil, err
 	}
 	for {

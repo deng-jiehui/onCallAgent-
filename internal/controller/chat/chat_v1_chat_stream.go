@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/schema"
@@ -36,6 +37,21 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 	}
 	var fullResponse strings.Builder
 	done := make(chan error, 1)
+	if c.limiter != nil {
+		if err := c.limiter.Acquire(ctx); err != nil {
+			_ = client.SendToClient("error", err.Error())
+			client.Finish()
+			return nil, err
+		}
+	}
+	var releaseOnce sync.Once
+	release := func() {
+		releaseOnce.Do(func() {
+			if c.limiter != nil {
+				c.limiter.Release()
+			}
+		})
+	}
 	finishClient := func() {
 		client.Finish()
 	}
@@ -49,6 +65,7 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 		if event.Message != nil {
 			fullResponse.WriteString(event.Message.Content)
 			if sendErr := send("message", event.Message.Content); sendErr != nil {
+				release()
 				done <- sendErr
 				return sendErr
 			}
@@ -57,28 +74,34 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 			return nil
 		}
 		if event.Err != nil {
+			release()
 			done <- event.Err
 			return nil
 		}
 		completeResponse := fullResponse.String()
 		if completeResponse == "" {
+			release()
 			done <- errors.New("chat agent returned empty stream")
 			return nil
 		}
 		if appendErr := c.conversations.Append(ctx, key, schema.UserMessage(msg), schema.AssistantMessage(completeResponse, nil)); appendErr != nil {
+			release()
 			done <- appendErr
 			return nil
 		}
 		if sendErr := send("done", "Stream completed"); sendErr != nil {
+			release()
 			done <- sendErr
 			return sendErr
 		}
 		done <- nil
+		release()
 		return nil
 	}
 	if err := session.PushBuild(ctx, func(runCtx context.Context) (*adk.AgentInput, error) {
 		return c.buildTurnInput(runCtx, key, msg)
 	}, emit); err != nil {
+		release()
 		_ = send("error", err.Error())
 		finishClient()
 		return nil, err

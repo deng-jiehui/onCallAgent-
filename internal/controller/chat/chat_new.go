@@ -22,6 +22,7 @@ type ControllerV1 struct {
 	conversations *conversation.MemoryStore
 	coordinator   *conversation.Coordinator
 	loops         *conversation.TurnLoopRegistry
+	limiter       *conversation.RunLimiter
 	runtime       *chat_pipeline.Runtime
 }
 
@@ -31,6 +32,7 @@ func NewV1(runtime *chat_pipeline.Runtime) chat.IChatV1 {
 		conversations: conversation.NewMemoryStore(6),
 		coordinator:   conversation.NewCoordinator(),
 		loops:         conversation.NewTurnLoopRegistryWithIdle(128, 30*time.Minute),
+		limiter:       conversation.NewRunLimiter(100),
 		runtime:       runtime,
 	}
 }
@@ -57,7 +59,13 @@ func (c *ControllerV1) buildTurnInput(ctx context.Context, key conversation.Sess
 
 func (c *ControllerV1) Close(ctx context.Context) error {
 	if c.loops == nil {
+		if c.limiter != nil {
+			c.limiter.Close()
+		}
 		return nil
+	}
+	if c.limiter != nil {
+		c.limiter.Close()
 	}
 	return c.loops.StopAll(ctx)
 }
