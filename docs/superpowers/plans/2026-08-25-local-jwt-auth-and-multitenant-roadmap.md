@@ -211,6 +211,7 @@ These phases are not silently dropped when JWT is implemented:
 - [x] Add a startup-owned `Runtime` that initializes the compiled Agent Graph and its current model, retriever, and tool dependencies once.
 - [x] Inject `Runtime` into controllers and remove `BuildChatAgent` from the request path.
 - [ ] Evaluate upgrading Eino to a release that provides `adk.TurnLoop`; when compatible, use one TurnLoop per long-lived conversation for queued turns, input merging, cancellation, and checkpoint/resume instead of implementing another turn loop.
+- [x] Add the repository skill `.agents/skills/eino-architecture-engineer` with official v0.9 compatibility, TurnLoop, tool policy, cancellation, and verification guidance.
 - [ ] Add startup health checks and graceful shutdown for Milvus, MCP, and model clients.
 - [ ] Check SDK concurrency safety with parallel integration tests; keep request-specific state in local variables/context only.
 - [ ] Add a `ToolRegistry` that resolves tools from `Principal`, tenant policy, and request intent; never expose every tool to every user.

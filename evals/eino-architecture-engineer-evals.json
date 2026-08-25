@@ -1,0 +1,35 @@
+{
+  "skill_name": "eino-architecture-engineer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Upgrade a multi-user Go chat service using Eino v0.6 compose.Runnable to Eino v0.9. Give compatibility checks, dependency steps, tests, and rollback.",
+      "expected_output": "Separate a compatible upgrade from AgenticMessage or TurnLoop migration, cite official v0.9 changes, and give executable verification steps.",
+      "files": [],
+      "assertions": [
+        "Separates a compatible schema.Message upgrade from an AgenticMessage or TurnLoop migration",
+        "Names official v0.9 compatibility concerns and runs a full test/build plus rollback check"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Design multi-user multi-turn chat for this project: serialize each conversation, run different conversations in parallel, cancel model and tools on disconnect, and support resume. Use official Eino capabilities instead of a custom loop.",
+      "expected_output": "Choose a conversation-scoped TurnLoop and explain Push, GenInput, PrepareAgent, OnAgentEvents, cancellation, checkpoint/resume, and tenant boundaries.",
+      "files": [],
+      "assertions": [
+        "Uses one Eino TurnLoop per conversation rather than one global loop",
+        "Explains Push, GenInput, PrepareAgent, OnAgentEvents, cancellation, and checkpoint/resume"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Our Agent has many tools, but tenant and user permissions differ. How should we use Eino v0.9 tool state and deferred tool search to redesign ToolRegistry?",
+      "expected_output": "Use ToolInfos and DeferredToolInfos through BeforeModelRewriteState, authorize server-side before discovery, expose tools on demand, and cover audit, tests, and fallback.",
+      "files": [],
+      "assertions": [
+        "Uses ToolInfos and DeferredToolInfos through the documented state rewrite path",
+        "Keeps server-side authorization at discovery and execution and records policy decisions"
+      ]
+    }
+  ]
+}
