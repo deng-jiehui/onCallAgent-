@@ -6,6 +6,7 @@ package chat
 
 import (
 	"SuperBizAgent/api/chat"
+	"SuperBizAgent/internal/ai/agent/chat_pipeline"
 	"SuperBizAgent/internal/conversation"
 	"SuperBizAgent/internal/logic/sse"
 )
@@ -14,12 +15,14 @@ type ControllerV1 struct {
 	service       *sse.Service
 	conversations *conversation.MemoryStore
 	coordinator   *conversation.Coordinator
+	runtime       *chat_pipeline.Runtime
 }
 
-func NewV1() chat.IChatV1 {
+func NewV1(runtime *chat_pipeline.Runtime) chat.IChatV1 {
 	return &ControllerV1{
 		service:       sse.New(),
 		conversations: conversation.NewMemoryStore(6),
 		coordinator:   conversation.NewCoordinator(),
+		runtime:       runtime,
 	}
 }

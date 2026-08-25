@@ -31,11 +31,10 @@ func (c *ControllerV1) Chat(ctx context.Context, req *v1.ChatReq) (res *v1.ChatR
 			Query:   msg,
 			History: history,
 		}
-		runner, buildErr := chat_pipeline.BuildChatAgent(runCtx)
-		if buildErr != nil {
-			return buildErr
+		if c.runtime == nil || c.runtime.Agent == nil {
+			return errors.New("chat agent runtime is not initialized")
 		}
-		out, invokeErr := runner.Invoke(runCtx, userMessage)
+		out, invokeErr := c.runtime.Agent.Invoke(runCtx, userMessage)
 		if invokeErr != nil {
 			return invokeErr
 		}

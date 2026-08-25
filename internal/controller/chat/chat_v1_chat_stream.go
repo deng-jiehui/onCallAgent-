@@ -38,11 +38,10 @@ func (c *ControllerV1) ChatStream(ctx context.Context, req *v1.ChatStreamReq) (r
 			Query:   msg,
 			History: history,
 		}
-		runner, buildErr := chat_pipeline.BuildChatAgent(runCtx)
-		if buildErr != nil {
-			return buildErr
+		if c.runtime == nil || c.runtime.Agent == nil {
+			return errors.New("chat agent runtime is not initialized")
 		}
-		sr, streamErr := runner.Stream(runCtx, userMessage)
+		sr, streamErr := c.runtime.Agent.Stream(runCtx, userMessage)
 		if streamErr != nil {
 			return streamErr
 		}

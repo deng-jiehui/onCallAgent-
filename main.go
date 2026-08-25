@@ -1,6 +1,7 @@
 package main
 
 import (
+	"SuperBizAgent/internal/ai/agent/chat_pipeline"
 	authn "SuperBizAgent/internal/auth"
 	authcontroller "SuperBizAgent/internal/controller/auth"
 	"SuperBizAgent/internal/controller/chat"
@@ -26,6 +27,11 @@ func main() {
 	authService, err := authn.NewService(authConfig)
 	if err != nil {
 		g.Log().Errorf(ctx, "validate local JWT authentication: %v", err)
+		panic(err)
+	}
+	agentRuntime, err := chat_pipeline.NewRuntime(ctx)
+	if err != nil {
+		g.Log().Errorf(ctx, "initialize chat agent runtime: %v", err)
 		panic(err)
 	}
 	shutdown, err := observability.Init(ctx, observability.LoadConfig(ctx))
@@ -56,7 +62,7 @@ func main() {
 		group.Middleware(middleware.CORSMiddleware)
 		group.Middleware(authService.Middleware)
 		group.Middleware(middleware.ResponseMiddleware)
-		group.Bind(chat.NewV1())
+		group.Bind(chat.NewV1(agentRuntime))
 	})
 	s.SetPort(6872)
 	s.Run()

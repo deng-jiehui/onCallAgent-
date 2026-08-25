@@ -208,8 +208,9 @@ These phases are not silently dropped when JWT is implemented:
 
 ### Phase 3: Runtime Reuse and Tool Policy
 
-- [ ] Add a startup-owned `Runtime` that initializes ChatModel, Embedding, Milvus, Retriever, MCP clients, and the compiled Agent Graph once.
-- [ ] Inject `Runtime` into controllers and remove `BuildChatAgent` from the request path.
+- [x] Add a startup-owned `Runtime` that initializes the compiled Agent Graph and its current model, retriever, and tool dependencies once.
+- [x] Inject `Runtime` into controllers and remove `BuildChatAgent` from the request path.
+- [ ] Evaluate upgrading Eino to a release that provides `adk.TurnLoop`; when compatible, use one TurnLoop per long-lived conversation for queued turns, input merging, cancellation, and checkpoint/resume instead of implementing another turn loop.
 - [ ] Add startup health checks and graceful shutdown for Milvus, MCP, and model clients.
 - [ ] Check SDK concurrency safety with parallel integration tests; keep request-specific state in local variables/context only.
 - [ ] Add a `ToolRegistry` that resolves tools from `Principal`, tenant policy, and request intent; never expose every tool to every user.
@@ -230,6 +231,16 @@ These phases are not silently dropped when JWT is implemented:
 - [ ] Fix the generic response middleware so it cannot append JSON to an SSE response.
 - [ ] Add load tests for 100+ independent conversations, slow clients, downstream timeouts, and retry/idempotency behavior.
 - [ ] Run `go test -race ./...` in CI or a development image that provides a C compiler; the current Windows host lacks `gcc`.
+
+#### Eino TurnLoop Decision
+
+The current dependency is Eino `v0.6.0`, which has no `TurnLoop` API. Eino's
+`adk.TurnLoop` appears in the `v0.9` line and provides a push-based, per-turn
+runtime with input buffering, preemption, and checkpoint/resume. It should be
+adopted only after an explicit dependency-compatibility check. The current
+`conversation.Coordinator` remains responsible for short-lived HTTP request
+serialization, while the startup `Runtime` owns reusable model/retriever/tool
+dependencies. Neither should be replaced by a hand-written global loop.
 
 ### Phase 5: Production Identity and Operations
 
