@@ -44,3 +44,6 @@ conversation:
   max_messages: 20
   postgres:
     dsn: "${SUPERBIZ_CONVERSATION_POSTGRES_DSN}"
+  redis:
+    url: "${SUPERBIZ_CONVERSATION_REDIS_URL}"
+    cache_ttl: "5m"

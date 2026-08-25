@@ -1,6 +1,9 @@
 package conversation
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestParseStoreConfigDefaultsToMemory(t *testing.T) {
 	cfg, err := ParseStoreConfig(map[string]string{})
@@ -43,5 +46,20 @@ func TestOpenConfiguredStoreMemoryDoesNotOpenDatabase(t *testing.T) {
 	}
 	if store == nil || db != nil {
 		t.Fatalf("memory store result = store %T, db %v", store, db)
+	}
+}
+
+func TestParseStoreConfigReadsRedisCacheSettings(t *testing.T) {
+	cfg, err := ParseStoreConfig(map[string]string{
+		"backend":   "postgres",
+		"dsn":       "postgres://localhost/superbizagent",
+		"redis_url": "redis://localhost:6379/2",
+		"cache_ttl": "2m",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.RedisURL == "" || cfg.CacheTTL != 2*time.Minute {
+		t.Fatalf("unexpected redis config: %#v", cfg)
 	}
 }

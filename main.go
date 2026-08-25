@@ -70,6 +70,13 @@ func main() {
 			}
 		}()
 	}
+	if storeCloser, ok := conversationStore.(interface{ Close() error }); ok {
+		defer func() {
+			if err := storeCloser.Close(); err != nil {
+				g.Log().Errorf(ctx, "close conversation cache: %v", err)
+			}
+		}()
+	}
 	s := g.Server()
 	chatController := chat.NewV1WithStore(agentRuntime, conversationStore)
 	if closable, ok := chatController.(interface{ Close(context.Context) error }); ok {

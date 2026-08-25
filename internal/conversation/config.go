@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gogf/gf/v2/frame/g"
+	"github.com/redis/go-redis/v9"
 )
 
 var (
@@ -20,10 +22,12 @@ type StoreConfig struct {
 	Backend     string
 	DSN         string
 	MaxMessages int
+	RedisURL    string
+	CacheTTL    time.Duration
 }
 
 func ParseStoreConfig(values map[string]string) (StoreConfig, error) {
-	cfg := StoreConfig{Backend: "memory", MaxMessages: 20}
+	cfg := StoreConfig{Backend: "memory", MaxMessages: 20, CacheTTL: 5 * time.Minute}
 	if value := strings.TrimSpace(values["backend"]); value != "" {
 		cfg.Backend = strings.ToLower(value)
 	}
@@ -31,6 +35,7 @@ func ParseStoreConfig(values map[string]string) (StoreConfig, error) {
 		return StoreConfig{}, fmt.Errorf("%w: %s", ErrConversationBackend, cfg.Backend)
 	}
 	cfg.DSN = strings.TrimSpace(values["dsn"])
+	cfg.RedisURL = strings.TrimSpace(values["redis_url"])
 	if cfg.Backend == "postgres" && cfg.DSN == "" {
 		return StoreConfig{}, ErrPostgresDSNRequired
 	}
@@ -44,6 +49,13 @@ func ParseStoreConfig(values map[string]string) (StoreConfig, error) {
 	if cfg.MaxMessages%2 != 0 {
 		cfg.MaxMessages--
 	}
+	if raw := strings.TrimSpace(values["cache_ttl"]); raw != "" {
+		cacheTTL, err := time.ParseDuration(raw)
+		if err != nil || cacheTTL <= 0 {
+			return StoreConfig{}, fmt.Errorf("invalid conversation cache_ttl: %q", raw)
+		}
+		cfg.CacheTTL = cacheTTL
+	}
 	return cfg, nil
 }
 
@@ -53,6 +65,8 @@ func LoadStoreConfig(ctx context.Context) (StoreConfig, error) {
 		"backend":      "conversation.backend",
 		"dsn":          "conversation.postgres.dsn",
 		"max_messages": "conversation.max_messages",
+		"redis_url":    "conversation.redis.url",
+		"cache_ttl":    "conversation.redis.cache_ttl",
 	} {
 		value, err := g.Cfg().Get(ctx, path)
 		if err == nil && !value.IsNil() {
@@ -78,5 +92,25 @@ func OpenConfiguredStore(ctx context.Context, cfg StoreConfig) (ConversationStor
 		_ = db.Close()
 		return nil, nil, err
 	}
-	return store, db, nil
+	if cfg.RedisURL == "" {
+		return store, db, nil
+	}
+	options, err := redis.ParseURL(cfg.RedisURL)
+	if err != nil {
+		_ = db.Close()
+		return nil, nil, fmt.Errorf("parse conversation redis URL: %w", err)
+	}
+	redisClient := redis.NewClient(options)
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		_ = redisClient.Close()
+		_ = db.Close()
+		return nil, nil, fmt.Errorf("ping conversation redis: %w", err)
+	}
+	cache, err := NewRedisConversationCache(redisClient)
+	if err != nil {
+		_ = redisClient.Close()
+		_ = db.Close()
+		return nil, nil, err
+	}
+	return NewCachedStore(store, cache, cfg.CacheTTL), db, nil
 }
