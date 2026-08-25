@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/schema"
@@ -38,6 +39,7 @@ type TurnLoopSession struct {
 	loop *adk.TurnLoop[turnRequest, *schema.Message]
 
 	stopOnce sync.Once
+	stopped  atomic.Bool
 }
 
 func NewTurnLoopSession(ctx context.Context, key SessionKey, agent adk.Agent) (*TurnLoopSession, error) {
@@ -99,6 +101,8 @@ func NewTurnLoopSession(ctx context.Context, key SessionKey, agent adk.Agent) (*
 
 func (s *TurnLoopSession) Key() SessionKey { return s.key }
 
+func (s *TurnLoopSession) IsStopped() bool { return s.stopped.Load() }
+
 func (s *TurnLoopSession) Push(ctx context.Context, input *adk.AgentInput, emit func(TurnEvent) error) error {
 	if input == nil {
 		return ErrTurnInput
@@ -125,6 +129,9 @@ func (s *TurnLoopSession) push(ctx context.Context, input *adk.AgentInput, build
 	if err := contextErr(ctx); err != nil {
 		return err
 	}
+	if s.IsStopped() {
+		return ErrTurnLoopStopped
+	}
 	accepted, _ := s.loop.Push(turnRequest{
 		ctx:   ctx,
 		input: input,
@@ -141,7 +148,10 @@ func (s *TurnLoopSession) Stop(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	s.stopOnce.Do(func() { s.loop.Stop(adk.WithImmediate()) })
+	s.stopOnce.Do(func() {
+		s.stopped.Store(true)
+		s.loop.Stop(adk.WithImmediate())
+	})
 	done := make(chan struct{})
 	go func() {
 		s.loop.Wait()

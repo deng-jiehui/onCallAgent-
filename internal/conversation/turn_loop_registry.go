@@ -52,7 +52,10 @@ func (r *TurnLoopRegistry) GetOrCreate(ctx context.Context, key SessionKey, fact
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if session, ok := r.sessions[key]; ok {
-		return session, nil
+		if !session.IsStopped() {
+			return session, nil
+		}
+		delete(r.sessions, key)
 	}
 	if len(r.sessions) >= r.maxSessions {
 		return nil, ErrTurnLoopRegistryFull

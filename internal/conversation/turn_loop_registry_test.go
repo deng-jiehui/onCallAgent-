@@ -73,6 +73,34 @@ func TestTurnLoopRegistrySeparatesTenantAndConversationKeys(t *testing.T) {
 	}
 }
 
+func TestTurnLoopRegistryRecreatesStoppedSession(t *testing.T) {
+	registry := NewTurnLoopRegistry(2)
+	agent := &registryTestAgent{}
+	key := SessionKey{TenantID: "tenant", UserID: "user", ConversationID: "conversation"}
+	factory := func(context.Context) (adk.Agent, error) { return agent, nil }
+
+	first, err := registry.GetOrCreate(context.Background(), key, factory)
+	if err != nil {
+		t.Fatalf("create first session: %v", err)
+	}
+	if err := first.Stop(context.Background()); err != nil {
+		t.Fatalf("stop first session: %v", err)
+	}
+	second, err := registry.GetOrCreate(context.Background(), key, factory)
+	if err != nil {
+		t.Fatalf("recreate session: %v", err)
+	}
+	if first == second {
+		t.Fatal("stopped session was reused")
+	}
+	if second.IsStopped() {
+		t.Fatal("new session is already stopped")
+	}
+	if err := registry.StopAll(context.Background()); err != nil {
+		t.Fatalf("stop recreated session: %v", err)
+	}
+}
+
 type registryTestAgent struct{}
 
 func (*registryTestAgent) Name(context.Context) string { return "registry-test-agent" }
